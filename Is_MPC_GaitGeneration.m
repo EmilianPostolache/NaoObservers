@@ -1,16 +1,16 @@
 clear;clc;close;figure;
 
-animated_plot = false;
+animated_plot = true;
 
 %% Define walk
 
 foot_distance_x = 0.07;
 foot_distance_y = 0.09;
-S = 30;
-D = 20;
-N = 100;
-Np = 100;
-omega = sqrt(9.8/0.33);
+S = 30;                     %% single phase support duration
+D = 20;                     %% double phase support duration
+N = 100;                    %% called C on paper
+Np = 100;                   %% Boh!!
+omega = sqrt(9.8/0.33);     %% called ? on paper
 
 balance = false;
 
@@ -47,16 +47,16 @@ else
 end
 
 %% General parameters
-delta = 0.01;
-w = 0.05/2;
+delta = 0.01;       %%Sampling rate used for the MPC horizon
+w = 0.05/2;         %%Since in the paper fx, fy (dimension of a rectangular region approximating the footprint) are 0.05, this should be the half of those areas used for dynamic constraints. 
 
-x(1) = 0.0;
-xd(1) = 0.0;
-zx(1) = 0.0;
+x(1) = 0.0;         %% x coordinate of the CoM
+xd(1) = 0.0;        %% derivative of the x coordinate of the CoM
+zx(1) = 0.0;        %% x coordinate of the ZMP
 
-y(1) = 0;
-yd(1) = 0;
-zy(1) = 0;
+y(1) = 0;           %% y coordinate of the CoM
+yd(1) = 0;          %% derivative of the y coordinate of the CoM
+zy(1) = 0;          %% y coordinate of the ZMP
 
 %% Compute constraints
 f1_y = -foot_distance_y;
@@ -64,8 +64,8 @@ f2_y = foot_distance_y;
 
 additionalFirstStepDuration = 20;
 
-fs_sequence_x = zeros(S+D+additionalFirstStepDuration,1);
-fs_sequence_y = zeros(S+D+additionalFirstStepDuration,1);
+fs_sequence_x = zeros(S+D+additionalFirstStepDuration,1);       %% Footstep sequence maybe?
+fs_sequence_y = zeros(S+D+additionalFirstStepDuration,1);       %% Footstep sequence maybe?
 
 for i = 1:size(fs_matrix,1)-2
     f1_x = fs_matrix(i,1);
@@ -74,14 +74,14 @@ for i = 1:size(fs_matrix,1)-2
     f1_y = fs_matrix(i,2);
     f2_y = fs_matrix(i+1,2);
     
-    fs_sequence_x = [fs_sequence_x; ones(S,1) * f1_x; f1_x + (1:D)'*(f2_x-f1_x)/D];
+    fs_sequence_x = [fs_sequence_x; ones(S,1) * f1_x; f1_x + (1:D)'*(f2_x-f1_x)/D];     %%Probably yes since it holds f1 values for S and then linearly interpolate to f2 values in D
     fs_sequence_y = [fs_sequence_y; ones(S,1) * f1_y; f1_y + (1:D)'*(f2_y-f1_y)/D];
 end
 
 fs_sequence_x(1) = [];
 fs_sequence_y(1) = [];
 
-zx_min = fs_sequence_x - w;
+zx_min = fs_sequence_x - w;         %%Boundary values of the footsteps
 zx_max = fs_sequence_x + w;
 if balance == true
     zy_min = fs_sequence_y - 5*w;
@@ -95,9 +95,9 @@ zy_max(1:S+D+additionalFirstStepDuration-1) = zy_max(1:S+D+additionalFirstStepDu
 
 
 %% Compute matrices
-p = ones(N,1);
-P = delta*tril(ones(N,N));
-A = [P;-P];
+p = ones(N,1);                      %% 
+P = delta*tril(ones(N,N));          %%  No ideas here...  
+A = [P;-P];                         %%
 
 %% Compute stability constraint
 Aeq = (1-exp(-omega*delta))/omega * exp(-omega*delta*(0:N-1)) - exp(-omega*delta*N) * delta * ones(1,N);
@@ -110,7 +110,7 @@ A_upd = [ch, sh/omega, 1-ch; omega*sh, ch, -omega*sh; 0, 0, 1];
 B_upd = [delta-sh/omega; 1-ch; delta];
 
 
-for i = 1:600  %% ===============>>> PAY ATTENTION HERE!! #iterations
+for i = 1:200  %% ===============>>> PAY ATTENTION HERE!! #iterations
     
     
     P = delta*tril(ones(N,N));
@@ -121,8 +121,8 @@ for i = 1:600  %% ===============>>> PAY ATTENTION HERE!! #iterations
     
     %% Disturbances
     
-    w_x(i) = 0;%%0.08;
-    w_y(i) = 0;%%0.08;
+    w_x(i) = 0.09;%%0.08;
+    w_y(i) = -0.06;%%0.08;
 
     
     b_x = [ zx_max(i:i+N-1) - zx(i); - zx_min(i:i+N-1) + zx(i)];
