@@ -70,7 +70,7 @@ fs_sequence_y = zeros(S+D+additionalFirstStepDuration,1);       % temporal behav
 for i = 1:size(fs_matrix,1)-2 % for 24 footsteps (2 less than original 26), maybe boundary conditions?
     f1_x = fs_matrix(i,1);   % get current value of ZMP pos x
     f2_x = fs_matrix(i+1,1); % get next value of ZMP pos x
-    
+
     f1_y = fs_matrix(i,2);   % same for y (actually this value oscillates)
     f2_y = fs_matrix(i+1,2);
     % behaviour ZMP:
@@ -111,23 +111,22 @@ B_upd = [delta-sh/omega; 1-ch; delta];
 
 
 for i = 1:200  %% ===============>>> PAY ATTENTION HERE!! #iterations
-    
-    
+
     P = delta*tril(ones(N,N));  % same as row 99
     H = 2*[eye(N)];  % identity matrix with 2 on main diagonal (because quadprog minimize 0.5*H not only H)
     f_x = zeros(1,N);  % row vector, no need of adding elements to H in quadprog
     f_y = zeros(1,N);  % same
-    
-    
+
+
     %% Disturbances
-    
+
     w_x(i) = 0.09;%%0.08;  % disturbances along x axis at instant i [m/s^2]
     w_y(i) = -0.06;%%0.08; % disturbances along y axis at instant i [m/s^2]
 
-    
+
     b_x = [ zx_max(i:i+N-1) - zx(i); - zx_min(i:i+N-1) + zx(i)];  % why not zx_max(i+1:i+N)? b part of ZMP contraints with ZMP values extracted from footstep sequence +- safety margin(see notes)
     b_y = [ zy_max(i:i+N-1) - zy(i); - zy_min(i:i+N-1) + zy(i)];  % same for y
-    
+0.
     beq_x = x(i) + xd(i)/omega - (1-exp(-omega*N*delta))*zx(i)...
         - omega*delta*exp(-omega*N*delta)*exp(-omega*delta*(0:Np-1))*fs_sequence_x(i+N:i+N+Np-1)...
         - exp(-omega*(N+Np)*delta)*fs_sequence_x(i+(N+Np));  % for quadprog see constraints
@@ -137,56 +136,56 @@ for i = 1:200  %% ===============>>> PAY ATTENTION HERE!! #iterations
     % decoupled solving
     zd_x = quadprog(H,f_x,A,b_x,Aeq,beq_x);  % solve current quadratic programming problem for x
     zd_y = quadprog(H,f_y,A,b_y,Aeq,beq_y);  % same for y
-    
-    
+
+
     z_pred_x = P*zd_x + zx(i);  % formula 7 paper "Intrinsically Stable MPC for Humanoid Gait Generation"
     z_pred_y = P*zd_y + zy(i);  % same (both not used)
-    
-    
-    
+
+
+
     x_updated = A_upd*[x(i); xd(i); zx(i)] + B_upd*(zd_x(1))+[0;delta;0]*w_x(i); % why disturbance only velocity CoM? Apply first value of optimal input sequence obtained from MPC
     y_updated = A_upd*[y(i); yd(i); zy(i)] + B_upd*(zd_y(1))+[0;delta;0]*w_y(i); % update rule from LIP dynamic integration?
-    
-    
+
+
     x(i+1) = x_updated(1);  % update components state vector
     xd(i+1) = x_updated(2);
     zx(i+1) = x_updated(3);
-    
+
     y(i+1) = y_updated(1);
     yd(i+1) = y_updated(2);
     zy(i+1) = y_updated(3);
-    
+
     %% Divergent component of motion
-    
+
     x_u(i) = x(1,i)+xd(1,i)/omega;  % unstable subsystem (always decoupled)
     y_u(i) = y(1,i)+yd(1,i)/omega;  % same
-    
+
     %% XY Plot
-    
+
     if (animated_plot)
-        
+
         figure(1)
         clf
         hold on    % show axes
         grid on    % show grid
         rect_x = [w,w,-w,-w,w];
-        rect_y = [foot_distance_y+w,-foot_distance_y-w,-foot_distance_y-w,foot_distance_y+w,foot_distance_y+w]; 
+        rect_y = [foot_distance_y+w,-foot_distance_y-w,-foot_distance_y-w,foot_distance_y+w,foot_distance_y+w];
         plot(rect_x,rect_y,'m','lineWidth',2,'HandleVisibility','off'); % plot robot initial position (aligned feet)
-        
+
         rect_x = [w,w,-w,-w,w];  % measure foot
         rect_y = [w,-w,-w,w,w];
-        
+
         nPlottedFootsteps = 14;  % how many footsteps to plot
-        
+
         for j = 1:nPlottedFootsteps
             rect_x = [w,w,-w,-w,w];  % same as lines 176-177
             rect_y = [w,-w,-w,w,w];
-            h1 = plot(fs_matrix(j,1)+rect_x,fs_matrix(j,2)+rect_y,'m','lineWidth',2,'HandleVisibility','off'); % plot footsteps centered on sequence 
+            h1 = plot(fs_matrix(j,1)+rect_x,fs_matrix(j,2)+rect_y,'m','lineWidth',2,'HandleVisibility','off'); % plot footsteps centered on sequence
         end
-        
+
         h2 = plot(x,y,'r','lineWidth',2);   % plot behaviour CoM (red)
         h3 = plot(zx,zy,'b','lineWidth',2); % plot behaviour ZMP (blue)
-        
+
         legend('CoM', 'ZMP')
         axis equal
         if balance == true
@@ -196,20 +195,20 @@ for i = 1:200  %% ===============>>> PAY ATTENTION HERE!! #iterations
         end
         xlabel('x [m]')
         ylabel('y [m]')
-        
+
     end
-    
-    
+
+
     disp('iteration number ')
     disp(i)
-    
+
 end
 
 
 %% XY Plot
 
 if (~animated_plot)  % same
-    
+
     figure(1)
     clf
     hold on
@@ -217,21 +216,21 @@ if (~animated_plot)  % same
     rect_x = [w,w,-w,-w,w];
     rect_y = [foot_distance_y+w,-foot_distance_y-w,-foot_distance_y-w,foot_distance_y+w,foot_distance_y+w];
     plot(rect_x,rect_y,'m','lineWidth',2,'HandleVisibility','off');
-    
+
     rect_x = [w,w,-w,-w,w];
     rect_y = [w,-w,-w,w,w];
-    
+
     nPlottedFootsteps = 14;
-    
+
     for j = 1:nPlottedFootsteps
         rect_x = [w,w,-w,-w,w];
         rect_y = [w,-w,-w,w,w];
         h1 = plot(fs_matrix(j,1)+rect_x,fs_matrix(j,2)+rect_y,'m','lineWidth',2,'HandleVisibility','off');
     end
-    
+
     h2 = plot(x,y,'r','lineWidth',2);
     h3 = plot(zx,zy,'b','lineWidth',2);
-    
+
     legend('CoM', 'ZMP')
     axis equal
     if balance == true
@@ -241,5 +240,4 @@ if (~animated_plot)  % same
     end
     xlabel('x [m]')
     ylabel('y [m]')
-    
 end
