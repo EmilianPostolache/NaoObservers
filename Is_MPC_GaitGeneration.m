@@ -64,8 +64,8 @@ f2_y = foot_distance_y;
 
 additionalFirstStepDuration = 20;  % gives extra time to stabilize first step cycle (SS+DS)
 
-fs_sequence_x = zeros(S+D+additionalFirstStepDuration,1);       % temporal behaviour of position CoM (along x asis)
-fs_sequence_y = zeros(S+D+additionalFirstStepDuration,1);       % temporal behaviour of position CoM (along y asis)
+fs_sequence_x = zeros(S+D+additionalFirstStepDuration,1);       % temporal behaviour of position ZMP (along x asis)
+fs_sequence_y = zeros(S+D+additionalFirstStepDuration,1);       % temporal behaviour of position ZMP (along y asis)
 
 for i = 1:size(fs_matrix,1)-2 % for 24 footsteps (2 less than original 26), maybe boundary conditions?
     f1_x = fs_matrix(i,1);   % get current value of ZMP pos x

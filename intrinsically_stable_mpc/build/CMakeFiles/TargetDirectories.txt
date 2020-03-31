@@ -1,0 +1,3 @@
+/home/filippo/AMR projects/FP1_NAO_Observers/intrinsically_stable_mpc/build/CMakeFiles/rebuild_cache.dir
+/home/filippo/AMR projects/FP1_NAO_Observers/intrinsically_stable_mpc/build/CMakeFiles/osgAtlasSimbicon.dir
+/home/filippo/AMR projects/FP1_NAO_Observers/intrinsically_stable_mpc/build/CMakeFiles/edit_cache.dir
