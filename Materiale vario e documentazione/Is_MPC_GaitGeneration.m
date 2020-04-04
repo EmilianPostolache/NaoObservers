@@ -134,17 +134,10 @@ for i = 1:200  %% ===============>>> PAY ATTENTION HERE!! #iterations
         - omega*delta*exp(-omega*N*delta)*exp(-omega*delta*(0:Np-1))*fs_sequence_y(i+N:i+N+Np-1)...
         - exp(-omega*(N+Np)*delta)*fs_sequence_y(i+(N+Np));
     % decoupled solving
-<<<<<<< HEAD:Is_MPC_GaitGeneration.m
+
     zd_x = quadprog(H,f_x,A,b_x,Aeq,beq_x);  % solve current quadratic programming problem for x
     zd_y = quadprog(H,f_y,A,b_y,Aeq,beq_y);  % same for y
 
-
-=======
-    zd_x = quadprog(H,f_x.',A,b_x,Aeq,beq_x);  % solve current quadratic programming problem for x
-    zd_y = quadprog(H,f_y.',A,b_y,Aeq,beq_y);  % same for y
-    
-    
->>>>>>> 9f74682c91ea81ab99e506f2242a3f2dd422a08d:Materiale vario e documentazione/Is_MPC_GaitGeneration.m
     z_pred_x = P*zd_x + zx(i);  % formula 7 paper "Intrinsically Stable MPC for Humanoid Gait Generation"
     z_pred_y = P*zd_y + zy(i);  % same (both not used)
 
