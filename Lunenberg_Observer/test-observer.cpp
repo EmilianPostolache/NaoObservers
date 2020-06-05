@@ -51,34 +51,30 @@ int main(int argc, char* argv[]){
     obs.init();
     
 
-    Eigen::Vector3d ext_force;
-    ext_force << 3, 0, 0;
-
-    std::cout << "Ext force: \n" << ext_force << std::endl;
+    // The following are dummy values
 
     Eigen::VectorXd u(30);
     Eigen::VectorXd Xc(30);
     Eigen::VectorXd Xz(30);
 
-    std::cout << "Padre " << std::endl;
+    std::cout << "u " << std::endl;
 
     u << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 
          0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 
          0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
 
-     std::cout << "Figlio " << std::endl;
+     std::cout << "Xc " << std::endl;
 
     Xc << 0.09, 0.214, 0.32, 0.382, 0.512, 0.584, 0.72, 0.818, 0.89, 1.02, 
           1.084, 1.19, 1.308, 1.404, 1.486, 1.592, 1.69, 1.808, 1.88, 2.004, 
           2.118, 2.192, 2.288, 2.408, 2.498, 2.6, 2.716, 2.788, 2.884, 3.012;
 
-     std::cout << "Spirito santo " << std::endl;
+     std::cout << "Xz " << std::endl;
 
     Xz << 0.098, 0.192, 0.28, 0.386, 0.51, 0.582, 0.708, 0.818, 0.892, 0.994, 
           1.092, 1.196, 1.31, 1.398, 1.52, 1.586, 1.702, 1.786, 1.898, 2.01, 
           2.104, 2.2, 2.306, 2.398, 2.516, 2.58, 2.688, 2.802, 2.91, 2.982;
      
-     std::cout << "Gabriele" << std::endl;
 
      for (size_t i = 0; i < 30; i++)
      {
