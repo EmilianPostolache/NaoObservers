@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+intrinsically_stable_mpc/.vscode/
+intrinsically_stable_mpc/build/
+intrinsically_stable_mpc/data/
