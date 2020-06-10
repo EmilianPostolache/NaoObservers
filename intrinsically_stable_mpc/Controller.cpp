@@ -1,5 +1,6 @@
 #include "Controller.hpp"
 #include "utils.cpp"
+#include "Observer.hpp"
 #include <iostream>
 #include <stdlib.h>
 
@@ -66,6 +67,51 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 	balanceBasePos(5) = comTargetHeight;
 	balanceFootPos.resize(6);
 	balanceFootPos = swingFootStartingPosition;
+
+	//Observer
+
+	int n = 5;
+    int m = 2;
+
+    // double dt = 1.0/30;
+
+    Eigen::MatrixXd A(n, n);
+    Eigen::MatrixXd B(n, 1);
+    Eigen::MatrixXd C(m, n);
+    Eigen::MatrixXd G(n, m);
+
+    double ni = sqrt(9.81/comTargetHeight);
+
+    A << 0, 1, 0, 0, 0, 
+         pow(ni,2), 0, -pow(ni,2), 1, 0,
+         0, 0, 0, 0, 0,
+         0, 0, 0, 0, 1,
+         0, 0, 0, 0, 0;
+
+    B << 0, 0, 1, 0, 0;
+
+    C << 1, 0, 0, 0, 0,
+         0, 0, 1, 0, 0;
+
+     G << 0.00,  -1.36,
+         29.00, -29.74,
+         -0.05,   0.00,
+          0.00,   0.68,
+          0.07,   0.01;
+
+
+	CompositeObserver observers("lunemberg-xy");
+    LuenbergerObserver lxObs(A, B, C, G, "lunemberg-x", 0);
+    LuenbergerObserver lyObs(A, B, C, G, "lunemberg-y", 1);
+    observers.add(&lxObs);
+    observers.add(&lyObs);
+    Eigen::VectorXd initX (n);
+	Eigen::VectorXd initY (n);
+	
+    initX << comInitialPosition[0], 0., comInitialPosition[0], 0., 0.;
+    initY << comInitialPosition[1], 0., comInitialPosition[1], 0., 0.;
+	lxObs.init(initX);
+ 	lyObs.init(initY);
 }
 
 Controller::~Controller()
@@ -80,7 +126,23 @@ void Controller::update()
 
     std::cout << "AAA"<<mWorld->getSimFrames() << std::endl;
         
-	//if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) mSupportFoot->addExtForce(Eigen::Vector3d(290*cos(2*3.14*((mWorld->getSimFrames())*6.28)/3),290*sin(2*3.14*((mWorld->getSimFrames())*3.14)/0.3),0));  //0.86*sin(2*3.14*(mWorld->getTimeStep())/0.2)*180 magic value!
+
+	Eigen::MatrixXd Y (3, 2); 
+	Eigen::MatrixXd U;
+	Eigen::Vector3d zmpMeas = this->getZmpFromExternalForces();
+	U = solver -> getZMPDot();
+	Eigen::Vector3d com;
+	if (balancePoint == TORSO) {
+		com = mBase->getCOM(/*mSupportFoot*/); //- mSupportFoot->getCOM();
+	} else {
+	    com = mRobot->getCOM(/*mSupportFoot*/);// - mSupportFoot->getCOM();
+	}
+	Y << com[0], zmpMeas[0],
+         com[1], zmpMeas[1],
+	 	 com[2], zmpMeas[2];
+
+	this->observers.update(U, Y);
+	// if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) mSupportFoot->addExtForce(Eigen::Vector3d(290*cos(2*3.14*((mWorld->getSimFrames())*6.28)/3),290*sin(2*3.14*((mWorld->getSimFrames())*3.14)/0.3),0));  //0.86*sin(2*3.14*(mWorld->getTimeStep())/0.2)*180 magic value!
 
 
 //if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) mSupportFoot->addExtForce(Eigen::Vector3d(10-15*cos(2*3.14*((mWorld->getSimFrames())*6.28)/30),-10-15*sin(2*3.14*((mWorld->getSimFrames())*3.14)/40),0));  //150 70
@@ -91,6 +153,14 @@ void Controller::update()
 	if (beheavior == WALK) qDot = generateWalking();
 	else qDot = generateBalance();
 	
+
+	// TODO: what I need in order to update this?
+	// TODO: where is the point in which data has to be used?? Two possible cases,
+	// here or after setCommand has been issued
+	// observation y: xc and xz
+	// input u      : xz'
+
+
 	// Set the velocity of the floating base to zero
 	for (int i=0; i<6; ++i){
 		mRobot->setCommand(i, 0);
@@ -742,6 +812,7 @@ void Controller::setInitialConfiguration() {
 
 void Controller::setComTargetHeight(double height) {
 	solver->setComTargetHeight(height);
+	// TODO: change target height in observer
 }
 
 void Controller::setReferenceVelocityX(double ref) {

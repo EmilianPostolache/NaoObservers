@@ -21,6 +21,7 @@ namespace mpcSolver{
         Eigen::VectorXd getOptimalZMPPosition();
         Eigen::VectorXd getOptimalFootsteps();
         Eigen::MatrixXd getPredictedZmp();
+        Eigen::MatrixXd getZMPDot();
         bool supportFootHasChanged();
 	double getOmega();
 
@@ -128,6 +129,10 @@ namespace mpcSolver{
 
 	// Some vectors to plot
 	Eigen::MatrixXd predictedZmp;
+
+        // ZMP dot for observers
+        Eigen::MatrixXd zmpDot;
+
    };
 
 }

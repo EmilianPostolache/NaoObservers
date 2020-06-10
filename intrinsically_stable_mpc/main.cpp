@@ -15,9 +15,9 @@ int main(int argc, char* argv[])
   // Load ground and Nao robot and add them to the world
   dart::utils::DartLoader urdfLoader;
   auto ground = urdfLoader.parseSkeleton(//"dart://sample/sdf/atlas/ground.urdf");
-	"/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/Materiale vario e documentazione/intrinsically_stable_mpc/ground.urdf");
+	"/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/ground.urdf");
   auto nao = urdfLoader.parseSkeleton(//dart::utils::SdfParser::readSkeleton(
-        "/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/Materiale vario e documentazione/intrinsically_stable_mpc/nao_flat_feet.urdf");
+        "/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/nao_flat_feet.urdf");
   world->addSkeleton(ground);
   world->addSkeleton(nao);
 

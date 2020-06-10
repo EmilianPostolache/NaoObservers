@@ -135,6 +135,8 @@ MPCSolver::MPCSolver(double mpcTimeStep, double controlTimeStep, double predicti
 
     // Stuff for plotting
     predictedZmp = Eigen::MatrixXd::Zero(3,N);
+
+	zmpDot = Eigen::MatrixXd::Zero(3,1);
 }
 
 void MPCSolver::solve(Eigen::Vector3d measuredComPos, Eigen::Vector3d measuredComVel, Eigen::Vector3d measuredComAcc,
@@ -221,6 +223,8 @@ void MPCSolver::solve(Eigen::Vector3d measuredComPos, Eigen::Vector3d measuredCo
     // Update the state based on the result of the QP
     Eigen::Vector3d nextStateX = updateState(zDotOptimalX(0),0,controlTimeStep);
     Eigen::Vector3d nextStateY = updateState(zDotOptimalY(0),1,controlTimeStep);
+
+	zmpDot << zDotOptimalX(0), zDotOptimalY(0), 0.0;
 
     comPos << nextStateX(0),nextStateY(0),comTargetHeight;
     comVel << nextStateX(1),nextStateY(1),0.0;
@@ -727,3 +731,8 @@ void MPCSolver::setZmpGain(double value) {
 double MPCSolver::getOmega() {
 	return omega;
 }
+
+Eigen::MatrixXd MPCSolver::getZMPDot() {
+	return zmpDot;
+}
+

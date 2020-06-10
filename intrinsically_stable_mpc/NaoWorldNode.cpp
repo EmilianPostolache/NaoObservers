@@ -30,7 +30,6 @@ void NaoWorldNode::reset()
   //mExternalForce.setZero();
   mController.reset(new Controller(mRobot, mWorld));
   mController->setInitialConfiguration();
-
 }
 
 //==============================================================================

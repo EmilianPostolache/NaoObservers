@@ -2,6 +2,7 @@
 #include "dart/dart.hpp"
 #include "MPCSolver.hpp"
 #include "Utility.hpp"
+#include "Observer.hpp"
 #include  <fstream>
 
 class Controller
@@ -117,6 +118,6 @@ private:
   Eigen::VectorXd balanceBasePos;
   Eigen::VectorXd balanceFootPos;
 
-public:
-
+  // Observer
+  CompositeObserver observers;
 };
