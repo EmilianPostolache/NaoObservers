@@ -127,7 +127,7 @@ MPCSolver::MPCSolver(double mpcTimeStep, double controlTimeStep, double predicti
     comPos(2) = comTargetHeight;
     comVel = Eigen::Vector3d::Zero(3);
     zmpPos = Eigen::Vector3d(comPos(0),comPos(1),0.0);
-    std::cout<<"ZMP"<<zmpPos<<std::endl;
+   // std::cout<<"ZMP"<<zmpPos<<std::endl;
     predictedFootstep = Eigen::Vector4d::Zero();
 
     // Initialize footstep counter
@@ -241,7 +241,7 @@ void MPCSolver::solve(Eigen::Vector3d measuredComPos, Eigen::Vector3d measuredCo
         footstepCounter++;
     }
 
-    std::cout << "Iteration " << controlIter << " Footstep " << footstepCounter << std::endl;
+    // std::cout << "Iteration " << controlIter << " Footstep " << footstepCounter << std::endl;
 }
 
 void MPCSolver::logToFile() {
@@ -485,10 +485,10 @@ void MPCSolver::genBalanceConstraint(){
 
 	bZmpMax =   bZmpLeftTerm - bZmpRightTerm;
 	bZmpMin = - bZmpLeftTerm - bZmpRightTerm;
-        std::cout <<"Before restriction"<<std::endl; 
-        std::cout <<"counter   "<<footstepCounter<<std::endl; 
-        std::cout <<"max "<<bZmpMax<<std::endl;       
-        std::cout <<" min   "  <<bZmpMin<<std::endl;
+        // std::cout <<"Before restriction"<<std::endl; 
+        // std::cout <<"counter   "<<footstepCounter<<std::endl; 
+        // std::cout <<"max "<<bZmpMax<<std::endl;       
+        // std::cout <<" min   "  <<bZmpMin<<std::endl;
         double a, c, b;
         int r = 40;
         int is, e;
@@ -510,11 +510,11 @@ else {b = 0;}
 b = 3;
 
 if (b==0){
-std::cout <<"enters"<<b<<std::endl;
+//std::cout <<"enters"<<b<<std::endl;
    for (float x = 0; x<(r/2); x++){
-std::cout <<"computes"<<b<<std::endl;
-          std::cout <<"A"<<std::endl; 
-          std::cout <<bZmpMax[x]<<std::endl;
+//std::cout <<"computes"<<b<<std::endl;
+        //  std::cout <<"A"<<std::endl; 
+        //  std::cout <<bZmpMax[x]<<std::endl;
   if (bZmpMin(x) < 0.001 && bZmpMin(x) > -0.001 ) {is = 0;}
 else {is = 1;}
 
@@ -529,38 +529,38 @@ else {is = 1;}
 
 e++;
 
-          std::cout <<"B"<<std::endl; 
-          std::cout <<bZmpMax[x] - is*0.01*(x*2/r)<<std::endl;
+          // std::cout <<"B"<<std::endl; 
+          // std::cout <<bZmpMax[x] - is*0.01*(x*2/r)<<std::endl;
  double w = is*0.01*(x*2/r);
-          std::cout <<w<<std::endl;
+          // std::cout <<w<<std::endl;
 
        }
 }
 
 e = 0;
 if (b==1) {
-std::cout <<"enters"<<b<<std::endl;
+// std::cout <<"enters"<<b<<std::endl;
    for (float x = 0; x<(r/2); x++){
-std::cout <<"computes"<<b<<std::endl;
-          std::cout <<"A"<<std::endl; 
+// std::cout <<"computes"<<b<<std::endl;
+//          std::cout <<"A"<<std::endl; 
 if (bZmpMin(x) < 0.001 && bZmpMin(x) > -0.001 ) {is = 0;}
 else {is = 1;}
-          std::cout <<bZmpMax(x)<<std::endl;
+        //  std::cout <<bZmpMax(x)<<std::endl;
           bZmpMax[x] =  bZmpMax[x] - 0*is*0.005*(x/r) - is*restriction_A[e]*(x/r);
           bZmpMin[x] =  bZmpMin[x] - 0*is*0.02*(x/r) - is*restriction_A[e]*(x/r);
           bZmpMax[x+(r/2)] = bZmpMax[x+(r/2)] - 0*is*0.008*(x/r) - is*restriction_A[e]*(x/r); // 0.005
           bZmpMin[x+(r/2)] = bZmpMin[x+(r/2)] - 0*is*0.01*(x/r) - is*restriction_B[e]*(x/r);   // 0.012
 e++;
-          std::cout <<"B"<<std::endl; 
-          std::cout <<bZmpMax[x] - is*0.01*(x*2/r)<<std::endl;
+        //  std::cout <<"B"<<std::endl; 
+        //  std::cout <<bZmpMax[x] - is*0.01*(x*2/r)<<std::endl;
  double w = is*0.01*(x*2/r);
-          std::cout <<w<<std::endl;
+        //  std::cout <<w<<std::endl;
        }
 
 }
-        std::cout <<"After restriction"<<std::endl; 
-        std::cout <<"max "<<bZmpMax<<std::endl;       
-        std::cout <<" min   "  <<bZmpMin<<std::endl;
+       // std::cout <<"After restriction"<<std::endl; 
+       // std::cout <<"max "<<bZmpMax<<std::endl;       
+       // std::cout <<" min   "  <<bZmpMin<<std::endl;
 }
 
 void MPCSolver::genFeasibilityConstraint(){

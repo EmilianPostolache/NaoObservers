@@ -3,6 +3,7 @@
 #include "Observer.hpp"
 #include <iostream>
 #include <stdlib.h>
+#include <map>
 
 using namespace std;
 
@@ -68,54 +69,122 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 	balanceFootPos.resize(6);
 	balanceFootPos = swingFootStartingPosition;
 
-	//Observer
+	setObservers(comTargetHeight, comInitialPosition, 1.0/100.0);
+}
 
-	int n = 5;
-    int m = 2;
+Controller::~Controller()
+{
+	delete observers;
+}
 
-    // double dt = 1.0/30;
+void Controller::setObservers(double comTargetHeight, Eigen::Vector3d& comInitialPosition, double dt){
+	
+	// ------------------------- Observers --------------------------
 
-    Eigen::MatrixXd A(n, n);
-    Eigen::MatrixXd B(n, 1);
-    Eigen::MatrixXd C(m, n);
-    Eigen::MatrixXd G(n, m);
+	observers = new CompositeObserver("observers");
 
-    double ni = sqrt(9.81/comTargetHeight);
+	//------------------------ Lunenberg Observer ------------------------
 
-    A << 0, 1, 0, 0, 0, 
+	int nLun = 5;
+    int mLun = 2;
+
+    Eigen::MatrixXd ALun(nLun, nLun);
+    Eigen::MatrixXd BLun(nLun, 1);
+    Eigen::MatrixXd CLun(mLun, nLun);
+    Eigen::MatrixXd GLun(nLun, mLun);
+
+    double ni = sqrt(g/comTargetHeight);
+
+    ALun << 0, 1, 0, 0, 0, 
          pow(ni,2), 0, -pow(ni,2), 1, 0,
          0, 0, 0, 0, 0,
          0, 0, 0, 0, 1,
          0, 0, 0, 0, 0;
 
-    B << 0, 0, 1, 0, 0;
+    BLun << 0, 0, 1, 0, 0;
 
-    C << 1, 0, 0, 0, 0,
+    CLun << 1, 0, 0, 0, 0,
          0, 0, 1, 0, 0;
 
-     G << 0.00,  -1.36,
+    GLun << 0.00,  -1.36,
          29.00, -29.74,
          -0.05,   0.00,
           0.00,   0.68,
           0.07,   0.01;
 
-
-	CompositeObserver observers("lunemberg-xy");
-    LuenbergerObserver lxObs(A, B, C, G, "lunemberg-x", 0);
-    LuenbergerObserver lyObs(A, B, C, G, "lunemberg-y", 1);
-    observers.add(&lxObs);
-    observers.add(&lyObs);
-    Eigen::VectorXd initX (n);
-	Eigen::VectorXd initY (n);
+    LuenbergerObserver *xLunObs = new LuenbergerObserver(ALun, BLun, CLun, GLun, "lunemberger_x", 0);
+    LuenbergerObserver *yLunObs = new LuenbergerObserver(ALun, BLun, CLun, GLun, "lunemberger_y", 1);
+    observers->add(xLunObs);
+    observers->add(yLunObs);
+	// observers.add(lzObs);
+    Eigen::VectorXd initXLun (nLun);
+	Eigen::VectorXd initYLun (nLun);
+	// Eigen::VectorXd initZ (n);
 	
-    initX << comInitialPosition[0], 0., comInitialPosition[0], 0., 0.;
-    initY << comInitialPosition[1], 0., comInitialPosition[1], 0., 0.;
-	lxObs.init(initX);
- 	lyObs.init(initY);
-}
+    initXLun << comInitialPosition[0], 0., comInitialPosition[0], 0., 0.;
+    initYLun << comInitialPosition[1], 0., comInitialPosition[1], 0., 0.;
+	// initZ << comInitialPosition[2], 0., comInitialPosition[2], 0., 0.;
+	xLunObs -> init(initXLun);
+ 	yLunObs -> init(initYLun);
+	// lzObs -> init(initZ);
 
-Controller::~Controller()
-{
+	//------------------------ Kalman Observer ------------------------
+
+	int uKal = 2;          // size input vector
+	int nKal = 5;          // size vector states
+	int mKal = 3;          // size vector measurements
+
+	double sigmaQJerk = pow(10.0, 3.0);
+	double sigmaQDdfext = pow(10.0, 3.0);
+
+	double zcHat, ddzcHat, fzHat, grfHat;
+	double fxHat, fyHat, ts;
+
+	// Initialize matrices for observers
+
+	Eigen::MatrixXd RzKal(mKal, mKal);
+	Eigen::MatrixXd RxKal(mKal, mKal);
+	Eigen::MatrixXd RyKal(mKal, mKal);
+
+	Eigen::MatrixXd AKal(nKal, nKal);
+	Eigen::MatrixXd BKal(nKal, uKal);
+	Eigen::MatrixXd CzKal(mKal, nKal);
+
+	// Define matrices for observers
+
+	RzKal << 0.01, 0, 0, 0, 1, 0, 0, 0, 1;
+	RxKal << 0.01, 0, 0, 0, 1, 0, 0, 0, 0.01;
+	RyKal = RxKal;
+
+	AKal << 1, dt, pow(dt, 2.0)/2, 0, 0,
+            0, 1, dt, 0, 0, 
+            0, 0, 1, 0, 0, 
+            0, 0, 0, 1, dt, 
+            0, 0, 0, 0, 1;
+            
+    BKal << pow(dt, 3.0)/6, 0, pow(dt, 2.0)/2, 0, dt, 0, 0, pow(dt, 2.0)/2, 0, dt;
+
+    CzKal << 1, 0, 0, 0, 0, 
+            0, 0, 1, 0, 0, 
+            0, 0, -Mc, 1, 0;
+
+	KalmanFilter* zKalObs = new KalmanFilter(AKal, BKal, CzKal, RzKal, sigmaQJerk,
+	                      sigmaQDdfext, "kalman_z", 2);  // z-axis Observer
+	zKalObs->init();
+
+	KalmanFilter* xKalObs = new KalmanFilter(AKal, BKal, CzKal, RxKal, sigmaQJerk,
+	                     sigmaQDdfext, "kalman_x", 0);  // x-axis Observer
+	xKalObs->init();
+
+	KalmanFilter* yKalObs = new KalmanFilter(AKal, BKal, CzKal, RyKal, sigmaQJerk,
+	                     sigmaQDdfext, "kalman_y", 1);  // z-axis Observer
+	yKalObs->init();
+	KalmanComposite* kalObs = new KalmanComposite(g, Mc);
+	kalObs->addKalmanX(xKalObs);
+	kalObs->addKalmanY(yKalObs);
+	kalObs->addKalmanZ(zKalObs);
+
+	observers->add(kalObs);
 }
 
 void Controller::update()
@@ -124,31 +193,39 @@ void Controller::update()
     std::mt19937 rng(dev());
     std::uniform_int_distribution<std::mt19937::result_type> dist6(0,15); // distribution in range [1, 6]
 
-    std::cout << "AAA"<<mWorld->getSimFrames() << std::endl;
+    // std::cout << "AAA"<<mWorld->getSimFrames() << std::endl;
         
 
-	Eigen::MatrixXd Y (3, 2); 
+	Eigen::MatrixXd Y (3, 3); 
 	Eigen::MatrixXd U;
-	Eigen::Vector3d zmpMeas = this->getZmpFromExternalForces();
+	std::pair<Eigen::Vector3d, double> wrench = this->getZmpFromWrench();
+	Eigen::Vector3d zmpMeas = wrench.first;
+	double zForce = wrench.second;
+
 	U = solver -> getZMPDot();
-	Eigen::Vector3d com;
+	Eigen::Vector3d comCurrentPosition;
+	Eigen::VectorXd comCurrentAcceleration;
+
 	if (balancePoint == TORSO) {
-		com = mBase->getCOM(/*mSupportFoot*/); //- mSupportFoot->getCOM();
+		comCurrentPosition = mBase->getCOM(/*mSupportFoot*/) - mSupportFoot->getCOM();
+		comCurrentAcceleration = mBase->getCOMLinearAcceleration(/*mSupportFoot*/);
 	} else {
-	    com = mRobot->getCOM(/*mSupportFoot*/);// - mSupportFoot->getCOM();
+	    comCurrentPosition = mRobot->getCOM(/*mSupportFoot*/) - mSupportFoot->getCOM();
+		comCurrentAcceleration = mRobot->getCOMLinearAcceleration(/*mSupportFoot*/);
 	}
-	Y << com[0], zmpMeas[0],
-         com[1], zmpMeas[1],
-	 	 com[2], zmpMeas[2];
+	Y << comCurrentPosition[0], zmpMeas[0], comCurrentAcceleration[0],
+         comCurrentPosition[1], zmpMeas[1], comCurrentAcceleration[1],
+	 	 comCurrentPosition[2], zForce+Mc*g, comCurrentAcceleration[2];
 
-	this->observers.update(U, Y);
-	// if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) mSupportFoot->addExtForce(Eigen::Vector3d(290*cos(2*3.14*((mWorld->getSimFrames())*6.28)/3),290*sin(2*3.14*((mWorld->getSimFrames())*3.14)/0.3),0));  //0.86*sin(2*3.14*(mWorld->getTimeStep())/0.2)*180 magic value!
+	observers->update(U, Y);
 
 
-//if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) mSupportFoot->addExtForce(Eigen::Vector3d(10-15*cos(2*3.14*((mWorld->getSimFrames())*6.28)/30),-10-15*sin(2*3.14*((mWorld->getSimFrames())*3.14)/40),0));  //150 70
-       // if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) mTorso->addExtForce(Eigen::Vector3d(-15+10*cos(2*3.14*((mWorld->getSimFrames())*6.28)/3),35+15*sin(2*3.14*((mWorld->getSimFrames())*3.14)/0.3),0)); 
+	if (mWorld->getSimFrames()>=1 && mWorld->getSimFrames()<=10000000) 
+		mTorso->addExtForce(Eigen::Vector3d(290*cos(2*3.14*((mWorld->getSimFrames())*6.28)/3),290*sin(2*3.14*((mWorld->getSimFrames())*3.14)/0.3),0));  //0.86*sin(2*3.14*(mWorld->getTimeStep())/0.2)*180 magic value!
+    //if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) mSupportFoot->addExtForce(Eigen::Vector3d(10-15*cos(2*3.14*((mWorld->getSimFrames())*6.28)/30),-10-15*sin(2*3.14*((mWorld->getSimFrames())*3.14)/40),0));  //150 70
+	// if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) mTorso->addExtForce(Eigen::Vector3d(-15+10*cos(2*3.14*((mWorld->getSimFrames())*6.28)/3),35+15*sin(2*3.14*((mWorld->getSimFrames())*3.14)/0.3),0)); 
     
-       // # sync; echo 3 > /proc/sys/vm/drop_cache
+    // # sync; echo 3 > /proc/sys/vm/drop_cache
 	Eigen::VectorXd qDot;
 	if (beheavior == WALK) qDot = generateWalking();
 	else qDot = generateBalance();
@@ -174,7 +251,7 @@ void Controller::update()
 	qDotOld = qDot;
 
 	// Store the results in files (for plotting)
-	// storeData();
+	storeData();
 }
 
 void Controller::storeData() {
@@ -185,29 +262,37 @@ void Controller::storeData() {
 	double filterGain = 0.2;
 	Eigen::Vector3d zmpPosMeas = this->getZmpFromExternalForces();
 
-	std::ofstream fout0("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/Materiale vario e documentazione/intrinsically_stable_mpc/data/zmp_meas_x.txt", std::ofstream::app);
+	std::ofstream fout0("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmp_meas_x.txt", std::ofstream::app);
 	fout0 << zmpPosMeas[0] << std::endl;
 
-	std::ofstream fout00("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/Materiale vario e documentazione/intrinsically_stable_mpc/data/zmp_meas_y.txt", std::ofstream::app);
+	std::ofstream fout00("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmp_meas_y.txt", std::ofstream::app);
 	fout00 << zmpPosMeas[1] << std::endl;
 
-	std::ofstream fout1("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/Materiale vario e documentazione/intrinsically_stable_mpc/data/comPositionNominal.txt", std::ofstream::app);
+	std::ofstream fout1("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comPositionNominal.txt", std::ofstream::app);
    	fout1 << (mSupportFoot->getCOM()+solver->getOptimalCoMPosition()).transpose()/*worldPredictedCom.transpose()*/ << std::endl;
 
-	std::ofstream fout2("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/Materiale vario e documentazione/intrinsically_stable_mpc/data/comPositionMeasured.txt", std::ofstream::app);
-   	fout2 << (mSupportFoot->getCOM() + mRobot->getCOM() - mSupportFoot->getCOM()).transpose() << std::endl;
+	std::ofstream fout2("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comPositionMeasured.txt", std::ofstream::app);
+   	fout2 << (mSupportFoot->getCOM() + mRobot->getCOM()).transpose() << std::endl;
 
-	std::ofstream fout3("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/Materiale vario e documentazione/intrinsically_stable_mpc/data/comVelocityNominal.txt", std::ofstream::app);
+	std::ofstream fout3("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comVelocityNominal.txt", std::ofstream::app);
    	fout3 << solver->getOptimalCoMVelocity().transpose() << std::endl;
 
-	std::ofstream fout4("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/Materiale vario e documentazione/intrinsically_stable_mpc/data/comVelocityMeasured.txt", std::ofstream::app);
+	std::ofstream fout4("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comVelocityMeasured.txt", std::ofstream::app);
    	fout4 << mRobot->getCOMLinearVelocity().transpose() << std::endl;
 
-	std::ofstream fout5("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/Materiale vario e documentazione/intrinsically_stable_mpc/data/zmpPositionNominal.txt", std::ofstream::app);
+	std::ofstream fout5("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmpPositionNominal.txt", std::ofstream::app);
    	fout5 << (mSupportFoot->getCOM()+solver->getOptimalZMPPosition()).transpose()/*worldPredictedZmp.transpose()*/ << std::endl;
 
-	std::ofstream fout6("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/Materiale vario e documentazione/intrinsically_stable_mpc/data/zmpPositionMeasured.txt", std::ofstream::app);
+	std::ofstream fout6("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmpPositionMeasured.txt", std::ofstream::app);
    	fout6 << (mSupportFoot->getCOM() + mRobot->getCOM() - mSupportFoot->getCOM()).transpose() - mRobot->getCOMLinearAcceleration().transpose()/(solver->getOmega()*solver->getOmega()) << std::endl;
+
+	// std::map<std::string, Eigen::VectorXd> states = observers->state();
+
+	// std::ofstream fout7("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/lunemberger_x.txt", std::ofstream::app);
+	// fout7 << states["lunemberger_x"].transpose() << std::endl;
+
+	// std::ofstream fout8("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/lunemberger_y.txt", std::ofstream::app);
+	// fout8 << states["lunemberger_y"].transpose() << std::endl;
 }
 
 Eigen::VectorXd Controller::generateWalking(){
@@ -246,13 +331,13 @@ Eigen::VectorXd Controller::generateWalking(){
     std::mt19937 rng(dev());
     std::uniform_int_distribution<std::mt19937::result_type> dist6(-15,15); // distribution in range [1, 6]
    // +0.15*(dist6(rng)/15)
-         	std::cout << "comCurrentP " << comCurrentPosition(2) <<"time "<< mWorld->getSimFrames()<< std::endl;
+   //      	std::cout << "comCurrentP " << comCurrentPosition(2) <<"time "<< mWorld->getSimFrames()<< std::endl;
 
-//if (mWorld->getSimFrames()>=500 && mWorld->getSimFrames()<=50020) comCurrentPosition(0) = comCurrentPosition(0) + 0*0.0001*sin(mWorld->getSimFrames()-500);
-//if (mWorld->getSimFrames()>=500 && mWorld->getSimFrames()<=50020) comCurrentPosition(1) = comCurrentPosition(1) + 0*0.0001*cos((mWorld->getSimFrames())/0.3);
-//if (mWorld->getSimFrames()>=500 && mWorld->getSimFrames()<=50020) comCurrentPosition(2) = comCurrentPosition(2) - 0*0.0001*cos((mWorld->getSimFrames())/0.3);
+   //if (mWorld->getSimFrames()>=500 && mWorld->getSimFrames()<=50020) comCurrentPosition(0) = comCurrentPosition(0) + 0*0.0001*sin(mWorld->getSimFrames()-500);
+   //if (mWorld->getSimFrames()>=500 && mWorld->getSimFrames()<=50020) comCurrentPosition(1) = comCurrentPosition(1) + 0*0.0001*cos((mWorld->getSimFrames())/0.3);
+   //if (mWorld->getSimFrames()>=500 && mWorld->getSimFrames()<=50020) comCurrentPosition(2) = comCurrentPosition(2) - 0*0.0001*cos((mWorld->getSimFrames())/0.3);
 
-         	std::cout << "comCurrentP plus " << comCurrentPosition(2) << std::endl;
+   //     	std::cout << "comCurrentP plus " << comCurrentPosition(2) << std::endl;
 
 
 	Eigen::VectorXd actPosSwingFoot(6);
@@ -269,12 +354,12 @@ Eigen::VectorXd Controller::generateWalking(){
 	// Compute the CoM prediction using MPC
 	solver->solve(comCurrentPosition, comCurrentVelocity, comCurrentAcceleration, mSwingFoot->getTransform(mSupportFoot),
 			supportFoot, mWorld->getTime(), 0.1, 0.0, 0.0); //max vel is 0.16, max omega is 0.1
-	std::cout << "comCurrentPos" << comCurrentPosition << std::endl;
-	std::cout << "comCurrentVelocity" << comCurrentVelocity << std::endl;
-	std::cout << "comCurrentAcceleration" << comCurrentAcceleration << std::endl;
+	// std::cout << "comCurrentPos" << comCurrentPosition << std::endl;
+	// std::cout << "comCurrentVelocity" << comCurrentVelocity << std::endl;
+	// std::cout << "comCurrentAcceleration" << comCurrentAcceleration << std::endl;
 	Eigen::Affine3d temp = mSwingFoot->getTransform(mSupportFoot);
-	//std::cout << "mSwing" << temp << std::endl;
-	std::cout << "supportFoot" << supportFoot << std::endl;
+	// std::cout << "mSwing" << temp << std::endl;
+	// std::cout << "supportFoot" << supportFoot << std::endl;
 	// Assemble desired tasks
 	Eigen::VectorXd desPosSwingFoot = getOmnidirectionalSwingFootTrajectoryMPC(solver->getOptimalFootsteps(),swingFootStartingPosition, actPosSwingFoot, stepHeight, indInitial);
 
@@ -290,29 +375,29 @@ Eigen::VectorXd Controller::generateWalking(){
         body_angles[1] = body_angles[1]+0.05*vel[1];
         body_angles[2] = body_angles[2]+0.05*vel[2];
 
-        std::cout << "Body Angles" << std::endl;
-	std::cout << body_angles[0] << std::endl;
-	std::cout << body_angles[1] << std::endl;
-	std::cout << body_angles[2] << std::endl;
+    //    std::cout << "Body Angles" << std::endl;
+	//std::cout << body_angles[0] << std::endl;
+	//std::cout << body_angles[1] << std::endl;
+	//std::cout << body_angles[2] << std::endl;
 
 	Eigen::VectorXd desPosBase(6);
 	desPosBase << 0.0, 0.0, desPosSwingFoot(2)/2, OptComPos(0)-0*0.05*body_angles[0], OptComPos(1)-0*0.01*body_angles[1], OptComPos(2)-0*0.05*0.05*body_angles[2];    //solver->getOptimalCoMPosition();
 
-	std::cout << "traiettoria swing foot" << std::endl;
-	std::cout << desPosSwingFoot << std::endl;
+	//std::cout << "traiettoria swing foot" << std::endl;
+	//std::cout << desPosSwingFoot << std::endl;
 
-	std::cout << "traiettoria base" << std::endl;
-	std::cout << desPosBase << std::endl;
+	//std::cout << "traiettoria base" << std::endl;
+	//std::cout << desPosBase << std::endl;
 
-        std::cout << "getOptimalCoMPosition" << std::endl;
-	std::cout << solver->getOptimalCoMPosition() << std::endl;   // Think of adding the angular momentum controller here...
+    //    std::cout << "getOptimalCoMPosition" << std::endl;
+	//std::cout << solver->getOptimalCoMPosition() << std::endl;   // Think of adding the angular momentum controller here...
 
 
-        std::cout << "Com Angular Velocity" << std::endl;
-	std::cout << mBase->getAngularVelocity() << std::endl;   // See what happens here...
+    //    std::cout << "Com Angular Velocity" << std::endl;
+	//std::cout << mBase->getAngularVelocity() << std::endl;   // See what happens here...
 
-        std::cout << "Angular Momentum" << std::endl;
-	std::cout << mBase->getAngularMomentum() << std::endl;   // See what happens here...
+    //    std::cout << "Angular Momentum" << std::endl;
+	//std::cout << mBase->getAngularMomentum() << std::endl;   // See what happens here...
 
 
 	// Compute inverse kinematics
@@ -340,11 +425,11 @@ Eigen::VectorXd Controller::generateBalance(){
 
 	Eigen::VectorXd desPosSwingFoot(6);
 	desPosSwingFoot = balanceFootPos;
-	std::cout << "traiettoria swing foot" << std::endl;
-	std::cout << desPosSwingFoot << std::endl;
+	// std::cout << "traiettoria swing foot" << std::endl;
+	// std::cout << desPosSwingFoot << std::endl;
 
-	std::cout << "traiettoria base" << std::endl;
-	std::cout << desPosBase << std::endl;
+	// std::cout << "traiettoria base" << std::endl;
+	// std::cout << desPosBase << std::endl;
 	// Compute inverse kinematics
 	return getJointVelocitiesQp(desPosBase, actPosBase, desPosSwingFoot, actPosSwingFoot);
 	//return getJointVelocitiesStacked(desPosBase, actPosBase, desPosSwingFoot, actPosSwingFoot);
@@ -397,7 +482,7 @@ Eigen::VectorXd Controller::getJointVelocitiesQp(Eigen::VectorXd desider_pos_bas
 	Eigen::VectorXd refPosture = initialConfiguration.segment(6,24);
 	Eigen::VectorXd currentPosture = mRobot->getPositions().segment(6,24);
 	//std::cout << "redPosture" << refPosture << std::endl;
-	std::cout << "currentPose" << currentPosture << std::endl;
+	//std::cout << "currentPose" << currentPosture << std::endl;
 	double jointVelocitiesGain = 0.00000001;
 	double postureGain = 0;
 	Eigen::MatrixXd taskGain = Eigen::MatrixXd::Identity(12,12);
@@ -557,10 +642,10 @@ Eigen::Vector3d Controller::getZmpFromExternalForces()
 	dart::dynamics::BodyNode* left_foot = mRobot->getBodyNode("l_sole");
 	Eigen::Vector3d left_cop;
 
-	std::cout << "impluso L" << left_foot->getConstraintImpulse() << std::endl;
+	//std::cout << "impluso L" << left_foot->getConstraintImpulse() << std::endl;
 
 	if(abs(left_foot->getConstraintImpulse()[5])>0.01){
-		left_cop << -(left_foot)->getConstraintImpulse()(1)/(left_foot)->getConstraintImpulse()(5)  ,  (left_foot)->getConstraintImpulse()(0)/(left_foot)->getConstraintImpulse()(5),0.0;
+		left_cop << -(left_foot)->getConstraintImpulse()(1)/(left_foot)->getConstraintImpulse()(5),  (left_foot)->getConstraintImpulse()(0)/(left_foot)->getConstraintImpulse()(5),0.0;
 		Eigen::Matrix3d iRotation = left_foot->getWorldTransform().rotation();
 		Eigen::Vector3d iTransl   = left_foot->getWorldTransform().translation();
 		left_cop = iTransl + iRotation*left_cop;
@@ -573,7 +658,7 @@ Eigen::Vector3d Controller::getZmpFromExternalForces()
 	right_torque = right_foot->getConstraintImpulse().segment(0,3);
 	right_torque = right_foot->getWorldTransform().rotation()*right_torque;
 
-	std::cout << "impluso R" << right_foot->getConstraintImpulse() << std::endl;
+	//std::cout << "impluso R" << right_foot->getConstraintImpulse() << std::endl;
 
 	if(abs(right_foot->getConstraintImpulse()[5])>0.01){
 		right_cop << -(right_foot)->getConstraintImpulse()(1)/(right_foot)->getConstraintImpulse()(5),(right_foot)->getConstraintImpulse()(0)/(right_foot)->getConstraintImpulse()(5),0.0;
@@ -606,10 +691,9 @@ Eigen::Vector3d Controller::getZmpFromExternalForces()
 	returnZmp << zmp_v[0], zmp_v[1], zmp_v[2];
 
 	return returnZmp;
-
 }
 
-Eigen::Vector3d Controller::getZmpFromWrench(){
+std::pair<Eigen::Vector3d, double> Controller::getZmpFromWrench(){
 	std::vector<double> zmp_est;
 	const dart::collision::CollisionResult& col_res = mWorld->getLastCollisionResult();
 	std::vector<dart::collision::Contact> contacts = col_res.getContacts();
@@ -652,7 +736,7 @@ Eigen::Vector3d Controller::getZmpFromWrench(){
 	Eigen::Vector3d streamable;
 	streamable << zmp_est[0], zmp_est[1], zmp_est[2];
 
-	return streamable;
+	return std::make_pair(streamable, total_fz);
 }
 
 Eigen::Vector3d Controller::getZmpFromAngularMomentum(){
@@ -755,11 +839,11 @@ Eigen::VectorXd Controller::getOmnidirectionalSwingFootTrajectoryMPC(Eigen::Vect
 //	double polyDotInT = 5*coeffs(0)*pow(t,4) + 4*coeffs(1)*pow(t,3) + 3*coeffs(2)*pow(t,2) + 2*coeffs(3)*pow(t,1) + coeffs(4);
 
 	Eigen::VectorXd swingFootPosition = Eigen::VectorXd::Zero(6);
-	std::cout << "ind" << ind << std::endl;
-	std::cout << "indInitial" << indInitial << std::endl;
-	std::cout << "t" << t << std::endl;
-	std::cout << "polyMatrix" << polyMatrix << std::endl;
-	std::cout << "polyInt" << polyInT << std::endl;
+	// std::cout << "ind" << ind << std::endl;
+	// std::cout << "indInitial" << indInitial << std::endl;
+	// std::cout << "t" << t << std::endl;
+	// std::cout << "polyMatrix" << polyMatrix << std::endl;
+	// std::cout << "polyInt" << polyInT << std::endl;
 	
 	if (ind<indInitial){
 		swingFootPosition(3) = swingFootStartingPosition(3);
@@ -784,7 +868,7 @@ Eigen::VectorXd Controller::getOmnidirectionalSwingFootTrajectoryMPC(Eigen::Vect
 
 		swingFootPosition(2) = targetFootstepPosition(3)*polyInT;*/
 	}
-	std::cout << "swingFootPosition" << swingFootPosition << std::endl;
+	// std::cout << "swingFootPosition" << swingFootPosition << std::endl;
 
 	return swingFootPosition;
 }

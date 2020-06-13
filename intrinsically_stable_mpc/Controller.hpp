@@ -12,7 +12,7 @@ public:
 			 dart::simulation::WorldPtr _world);
   virtual ~Controller();
 
-  Eigen::Vector3d getZmpFromWrench();
+  std::pair<Eigen::Vector3d, double> getZmpFromWrench();
   Eigen::Vector3d getZmpFromExternalForces();
   Eigen::Vector3d getZmpFromAngularMomentum();
 
@@ -45,6 +45,7 @@ public:
   Eigen::VectorXd getJointVelocitiesQp(Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd);
 
   void setInitialConfiguration();
+  void setObservers(double, Eigen::Vector3d&, double);
 
   Eigen::VectorXd generateWalking();
   Eigen::VectorXd generateBalance();
@@ -84,6 +85,9 @@ private:
 
   double stepHeight = 0.02;
 
+	double g = 9.81;	// gravity
+	double Mc = 5.19;   // [kg] mass of the robot
+
   bool supportFoot;
   bool LEFT = false;
   bool RIGHT = true;
@@ -119,5 +123,5 @@ private:
   Eigen::VectorXd balanceFootPos;
 
   // Observer
-  CompositeObserver observers;
+  CompositeObserver* observers;
 };

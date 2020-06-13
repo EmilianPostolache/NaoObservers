@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
 
   // Set gravity of the world
   world->setGravity(Eigen::Vector3d(0.0, 0.0, -9.81));
-  world->setTimeStep(1.0/100.0);
+  world->setTimeStep(1.0/100.0); //
 
   // Wrap a WorldNode around it
   osg::ref_ptr<NaoWorldNode> node
