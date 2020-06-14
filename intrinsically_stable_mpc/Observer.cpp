@@ -25,10 +25,19 @@ void CompositeObserver::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& 
 }
 
 std::map<std::string, Eigen::VectorXd> CompositeObserver::state() {
-    std::map<std::string, Eigen::VectorXd> m;
+    std::map<std::string, Eigen::VectorXd> mp;
     for (Observer *c : children) {
         auto map = c->state();
-        m.insert(map.begin(), map.end());
+        mp.insert(map.begin(), map.end());
+    }
+    return mp;
+}
+
+std::map<std::string, Eigen::MatrixXd> CompositeObserver::uncertainty() {
+    std::map<std::string, Eigen::MatrixXd> m;
+    for (Observer *c : children) {
+         auto map = c->uncertainty();
+         m.insert(map.begin(), map.end());
     }
     return m;
 }
@@ -63,13 +72,26 @@ void LuenbergerObserver::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd&
         throw std::runtime_error("Observer is not initialized!");
     Eigen::VectorXd u = U.row(this->axis);
     Eigen::Vector2d y;
-    y << Y.row(this->axis)[0], Y.row(this->axis)[1];
+    if (this->axis == 2) {
+        y << Y.row(this->axis)[0], 0.0;
+    } else {
+        y << Y.row(this->axis)[0], Y.row(this->axis)[1];
+    }
     xAct = (A * xAct) + (B * u) + (G*(y - C*xAct));
 }
 
 std::map<std::string, Eigen::VectorXd> LuenbergerObserver::state(){
     std::map<std::string, Eigen::VectorXd> map;
     map[name] = xAct;
+    return map;
+}
+
+std::map<std::string, Eigen::MatrixXd> LuenbergerObserver::uncertainty() {
+    std::map<std::string, Eigen::MatrixXd> map;
+    //TODO: rendere piu efficiente
+    Eigen::MatrixXd mat(n, n);
+    mat.setZero();
+    map[name] = mat;
     return map;
 }
 
@@ -102,12 +124,23 @@ void KalmanComposite::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y)
 }
 
 std::map<std::string, Eigen::VectorXd> KalmanComposite::state() {
-    std::map<std::string, Eigen::VectorXd> m;
+    std::map<std::string, Eigen::VectorXd> mp;
     auto mapX = kalmanX->state();
-    m.insert(mapX.begin(), mapX.end());
+    mp.insert(mapX.begin(), mapX.end());
     auto mapY = kalmanY->state();
-    m.insert(mapY.begin(), mapY.end());
+    mp.insert(mapY.begin(), mapY.end());
     auto mapZ = kalmanZ->state();
+    mp.insert(mapZ.begin(), mapZ.end());
+    return mp;
+}
+
+std::map<std::string, Eigen::MatrixXd> KalmanComposite::uncertainty() {
+    std::map<std::string, Eigen::MatrixXd> m;
+    auto mapX = kalmanX->uncertainty();
+    m.insert(mapX.begin(), mapX.end());
+    auto mapY = kalmanY->uncertainty();
+    m.insert(mapY.begin(), mapY.end());
+    auto mapZ = kalmanZ->uncertainty();
     m.insert(mapZ.begin(), mapZ.end());
     return m;
 }
@@ -145,8 +178,7 @@ void KalmanFilter::init(){
 
     int f = pow(10, 2);
     xAct.setZero();
-    Eigen::MatrixXd p(n,n);
-    P = p;
+    P.resize(n,n);
     P = f*P.setIdentity();
 }
 
@@ -183,5 +215,12 @@ void KalmanFilter::update(const Eigen::MatrixXd& C, const Eigen::MatrixXd& U, co
 std::map<std::string, Eigen::VectorXd> KalmanFilter::state(){
     std::map<std::string, Eigen::VectorXd> map;
     map[name] = xAct;
+    return map;
+}
+
+// Returns current covariance estimate
+std::map<std::string, Eigen::MatrixXd> KalmanFilter::uncertainty(){
+    std::map<std::string, Eigen::MatrixXd> map;
+    map[name] = P;
     return map;
 }

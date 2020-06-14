@@ -72,6 +72,8 @@ public:
   Eigen::VectorXd getBalanceBasePos();
   Eigen::VectorXd getBalanceFootPos();
 
+  void applyForce(Eigen::Vector3d);
+
 private:
   dart::dynamics::SkeletonPtr mRobot;
 
@@ -85,8 +87,9 @@ private:
 
   double stepHeight = 0.02;
 
-	double g = 9.81;	// gravity
-	double Mc = 5.19;   // [kg] mass of the robot
+	double g = 9.81;	     // gravity
+	double Mc = 35.1954;   // [kg] mass of the robot
+  Eigen::Vector3d externalForce = Eigen::Vector3d(100.0, 0.0, 0.0);
 
   bool supportFoot;
   bool LEFT = false;

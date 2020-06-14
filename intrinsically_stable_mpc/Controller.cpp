@@ -114,19 +114,25 @@ void Controller::setObservers(double comTargetHeight, Eigen::Vector3d& comInitia
 
     LuenbergerObserver *xLunObs = new LuenbergerObserver(ALun, BLun, CLun, GLun, "lunemberger_x", 0);
     LuenbergerObserver *yLunObs = new LuenbergerObserver(ALun, BLun, CLun, GLun, "lunemberger_y", 1);
+	LuenbergerObserver *zLunObs = new LuenbergerObserver(ALun, BLun, CLun, GLun, "lunemberger_z", 2);
+
     observers->add(xLunObs);
     observers->add(yLunObs);
+	observers->add(zLunObs);
 	// observers.add(lzObs);
+
     Eigen::VectorXd initXLun (nLun);
 	Eigen::VectorXd initYLun (nLun);
+	Eigen::VectorXd initZLun (nLun);
+
 	// Eigen::VectorXd initZ (n);
-	
     initXLun << comInitialPosition[0], 0., comInitialPosition[0], 0., 0.;
     initYLun << comInitialPosition[1], 0., comInitialPosition[1], 0., 0.;
-	// initZ << comInitialPosition[2], 0., comInitialPosition[2], 0., 0.;
+	initZLun << comInitialPosition[2], 0., 0., 0., 0.;
+	
 	xLunObs -> init(initXLun);
  	yLunObs -> init(initYLun);
-	// lzObs -> init(initZ);
+	zLunObs -> init(initZLun);
 
 	//------------------------ Kalman Observer ------------------------
 
@@ -187,6 +193,13 @@ void Controller::setObservers(double comTargetHeight, Eigen::Vector3d& comInitia
 	observers->add(kalObs);
 }
 
+void Controller::applyForce(Eigen::Vector3d force)
+{
+	if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) 
+		mTorso->addExtForce(force);  //0.86*sin(2*3.14*(mWorld->getTimeStep())/0.2)*180 magic value!
+	// TODO: indagare su mRobot->setForce();
+}
+
 void Controller::update()
 { 
     std::random_device dev;
@@ -206,23 +219,27 @@ void Controller::update()
 	Eigen::Vector3d comCurrentPosition;
 	Eigen::VectorXd comCurrentAcceleration;
 
-	if (balancePoint == TORSO) {
-		comCurrentPosition = mBase->getCOM(/*mSupportFoot*/) - mSupportFoot->getCOM();
-		comCurrentAcceleration = mBase->getCOMLinearAcceleration(/*mSupportFoot*/);
-	} else {
-	    comCurrentPosition = mRobot->getCOM(/*mSupportFoot*/) - mSupportFoot->getCOM();
-		comCurrentAcceleration = mRobot->getCOMLinearAcceleration(/*mSupportFoot*/);
-	}
+	// if (balancePoint == TORSO) {
+	//   comCurrentPosition = mBase->getCOM(/*mSupportFoot*/) - mSupportFoot->getCOM();
+	//	 comCurrentAcceleration = mBase->getCOMLinearAcceleration(/*mSupportFoot*/);
+	// } 
+	// else {
+	//    comCurrentPosition = mRobot->getCOM(/*mSupportFoot*/) - mSupportFoot->getCOM();
+	//	comCurrentAcceleration = mRobot->getCOMLinearAcceleration(/*mSupportFoot*/);
+	// }
+ 	comCurrentPosition = mTorso->getCOM() - mSupportFoot->getCOM();
+	comCurrentAcceleration = mTorso->getCOMLinearAcceleration();
+
 	Y << comCurrentPosition[0], zmpMeas[0], comCurrentAcceleration[0],
          comCurrentPosition[1], zmpMeas[1], comCurrentAcceleration[1],
 	 	 comCurrentPosition[2], zForce+Mc*g, comCurrentAcceleration[2];
 
 	observers->update(U, Y);
 
-
-	if (mWorld->getSimFrames()>=1 && mWorld->getSimFrames()<=10000000) 
-		mTorso->addExtForce(Eigen::Vector3d(290*cos(2*3.14*((mWorld->getSimFrames())*6.28)/3),290*sin(2*3.14*((mWorld->getSimFrames())*3.14)/0.3),0));  //0.86*sin(2*3.14*(mWorld->getTimeStep())/0.2)*180 magic value!
-    //if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) mSupportFoot->addExtForce(Eigen::Vector3d(10-15*cos(2*3.14*((mWorld->getSimFrames())*6.28)/30),-10-15*sin(2*3.14*((mWorld->getSimFrames())*3.14)/40),0));  //150 70
+	applyForce(externalForce);
+	// if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) 
+	// 	mTorso->addExtForce(Eigen::Vector3d(290*cos(2*3.14*((mWorld->getSimFrames())*6.28)/3),290*sin(2*3.14*((mWorld->getSimFrames())*3.14)/0.3),0));  //0.86*sin(2*3.14*(mWorld->getTimeStep())/0.2)*180 magic value!
+    // //if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) mSupportFoot->addExtForce(Eigen::Vector3d(10-15*cos(2*3.14*((mWorld->getSimFrames())*6.28)/30),-10-15*sin(2*3.14*((mWorld->getSimFrames())*3.14)/40),0));  //150 70
 	// if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) mTorso->addExtForce(Eigen::Vector3d(-15+10*cos(2*3.14*((mWorld->getSimFrames())*6.28)/3),35+15*sin(2*3.14*((mWorld->getSimFrames())*3.14)/0.3),0)); 
     
     // # sync; echo 3 > /proc/sys/vm/drop_cache
@@ -265,34 +282,92 @@ void Controller::storeData() {
 	std::ofstream fout0("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmp_meas_x.txt", std::ofstream::app);
 	fout0 << zmpPosMeas[0] << std::endl;
 
-	std::ofstream fout00("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmp_meas_y.txt", std::ofstream::app);
-	fout00 << zmpPosMeas[1] << std::endl;
+	std::ofstream fout1("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmp_meas_y.txt", std::ofstream::app);
+	fout1 << zmpPosMeas[1] << std::endl;
 
-	std::ofstream fout1("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comPositionNominal.txt", std::ofstream::app);
-   	fout1 << (mSupportFoot->getCOM()+solver->getOptimalCoMPosition()).transpose()/*worldPredictedCom.transpose()*/ << std::endl;
+	std::ofstream fout3("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comPositionNominal.txt", std::ofstream::app);
+   	fout3 << (mSupportFoot->getCOM()+solver->getOptimalCoMPosition()).transpose()/*worldPredictedCom.transpose()*/ << std::endl;
 
-	std::ofstream fout2("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comPositionMeasured.txt", std::ofstream::app);
-   	fout2 << (mSupportFoot->getCOM() + mRobot->getCOM()).transpose() << std::endl;
+	std::ofstream fout4("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comPositionMeasured.txt", std::ofstream::app);
+   	fout4 << (mSupportFoot->getCOM() + mRobot->getCOM()).transpose() << std::endl;
 
-	std::ofstream fout3("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comVelocityNominal.txt", std::ofstream::app);
-   	fout3 << solver->getOptimalCoMVelocity().transpose() << std::endl;
+	std::ofstream fout5("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comVelocityNominal.txt", std::ofstream::app);
+   	fout5 << solver->getOptimalCoMVelocity().transpose() << std::endl;
 
-	std::ofstream fout4("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comVelocityMeasured.txt", std::ofstream::app);
-   	fout4 << mRobot->getCOMLinearVelocity().transpose() << std::endl;
+	std::ofstream fout6("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/comVelocityMeasured.txt", std::ofstream::app);
+   	fout6 << mRobot->getCOMLinearVelocity().transpose() << std::endl;
 
-	std::ofstream fout5("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmpPositionNominal.txt", std::ofstream::app);
-   	fout5 << (mSupportFoot->getCOM()+solver->getOptimalZMPPosition()).transpose()/*worldPredictedZmp.transpose()*/ << std::endl;
+	std::ofstream fout7("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmpPositionNominal.txt", std::ofstream::app);
+   	fout7 << (mSupportFoot->getCOM()+solver->getOptimalZMPPosition()).transpose()/*worldPredictedZmp.transpose()*/ << std::endl;
 
-	std::ofstream fout6("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmpPositionMeasured.txt", std::ofstream::app);
-   	fout6 << (mSupportFoot->getCOM() + mRobot->getCOM() - mSupportFoot->getCOM()).transpose() - mRobot->getCOMLinearAcceleration().transpose()/(solver->getOmega()*solver->getOmega()) << std::endl;
+	std::ofstream fout8("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmpPositionMeasured.txt", std::ofstream::app);
+   	fout8 << (mSupportFoot->getCOM() + mRobot->getCOM() - mSupportFoot->getCOM()).transpose() - mRobot->getCOMLinearAcceleration().transpose()/(solver->getOmega()*solver->getOmega()) << std::endl;
 
-	// std::map<std::string, Eigen::VectorXd> states = observers->state();
+	// Logs for observers
 
-	// std::ofstream fout7("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/lunemberger_x.txt", std::ofstream::app);
-	// fout7 << states["lunemberger_x"].transpose() << std::endl;
+	std::map<std::string, Eigen::VectorXd> states = observers->state();
 
-	// std::ofstream fout8("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/lunemberger_y.txt", std::ofstream::app);
-	// fout8 << states["lunemberger_y"].transpose() << std::endl;
+	std::ofstream fout9("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/lunemberger_x.txt", std::ofstream::app);
+	fout9 << states["lunemberger_x"].transpose() << std::endl;
+
+	std::ofstream fout10("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/lunemberger_x_gt.txt", std::ofstream::app);
+	fout10 << mTorso->getCOM()[0] - mSupportFoot->getCOM()[0] << " "
+	       << mTorso->getCOMLinearVelocity()[0] << " " 
+		   << zmpPosMeas[0] <<  " "
+		   << externalForce[0] <<  " "
+		   << 0.0 <<std::endl;
+
+	std::ofstream fout11("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/lunemberger_y.txt", std::ofstream::app);
+	fout11 << states["lunemberger_y"].transpose() << std::endl;
+
+	std::ofstream fout12("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/lunemberger_y_gt.txt", std::ofstream::app);
+	fout12 << mTorso->getCOM()[1] - mSupportFoot->getCOM()[1] << " "
+	       << mTorso->getCOMLinearVelocity()[1] << " " 
+		   << zmpPosMeas[1] <<  " "
+		   << externalForce[1] <<  " "
+		   << 0.0 <<std::endl;
+
+
+	std::ofstream fout13("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/lunemberger_z.txt", std::ofstream::app);
+	fout13 << states["lunemberger_z"].transpose() << std::endl;
+
+	std::ofstream fout14("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/lunemberger_z_gt.txt", std::ofstream::app);
+	fout14 << mTorso->getCOM()[2] - mSupportFoot->getCOM()[2] << " "
+	       << mTorso->getCOMLinearVelocity()[2] << " " 
+		   << zmpPosMeas[2] <<  " "
+		   << externalForce[2] <<  " "
+		   << 0.0 <<std::endl;
+
+
+	std::ofstream fout15("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x.txt", std::ofstream::app);
+	fout15 << states["kalman_x"].transpose() << std::endl;
+
+	std::ofstream fout16("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x_gt.txt", std::ofstream::app);
+	fout16 << mTorso->getCOM()[0] - mSupportFoot->getCOM()[0] << " "
+	       << mTorso->getCOMLinearVelocity()[0] << " " 
+		   << mTorso->getCOMLinearAcceleration()[0] << " "
+		   << externalForce[0] <<  " "
+		   << 0.0 << std::endl;
+
+	std::ofstream fout17("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y.txt", std::ofstream::app);
+	fout17 << states["kalman_y"].transpose() << std::endl;
+	
+	std::ofstream fout18("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y_gt.txt", std::ofstream::app);
+	fout18 << mTorso->getCOM()[1] - mSupportFoot->getCOM()[1] << " "
+		<< mTorso->getCOMLinearVelocity()[1] << " " 
+		<< mTorso->getCOMLinearAcceleration()[1] << " "
+		<< externalForce[1] <<  " "
+		<< 0.0 << std::endl;
+
+	std::ofstream fout19("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z.txt", std::ofstream::app);
+	fout19 << states["kalman_z"].transpose() << std::endl;
+
+	std::ofstream fout20("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z_gt.txt", std::ofstream::app);
+	fout20 << mTorso->getCOM()[2] - mSupportFoot->getCOM()[2] << " "
+		<< mTorso->getCOMLinearVelocity()[2] << " " 
+		<< mTorso->getCOMLinearAcceleration()[2] << " "
+		<< externalForce[2] <<  " "
+		<< 0.0 << std::endl;
 }
 
 Eigen::VectorXd Controller::generateWalking(){

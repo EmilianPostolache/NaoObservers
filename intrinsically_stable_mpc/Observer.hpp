@@ -11,6 +11,7 @@ class Observer{
         virtual ~Observer() {}
         virtual void update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y) = 0;
         virtual std::map<std::string, Eigen::VectorXd> state() = 0;
+        virtual std::map<std::string, Eigen::MatrixXd> uncertainty() = 0;
         std::string getName() { return name; }
     protected:
         std::string name;
@@ -25,6 +26,8 @@ class CompositeObserver : public Observer {
         void rem(Observer *obs);
 
         void update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y);
+
+        std::map<std::string, Eigen::MatrixXd> uncertainty();
         std::map<std::string, Eigen::VectorXd> state();
     
     private:
@@ -57,6 +60,7 @@ class LuenbergerObserver : public LeafObserver{
         void init(const Eigen::VectorXd& x0);
         void update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y);
         std::map<std::string, Eigen::VectorXd> state();
+        std::map<std::string, Eigen::MatrixXd> uncertainty();
 
      private:
          // Matrices
@@ -126,6 +130,7 @@ class KalmanFilter : public LeafObserver {
         Returns the current estimate of the system state
         */
         std::map<std::string, Eigen::VectorXd> state();
+        std::map<std::string, Eigen::MatrixXd> uncertainty();
 
         int getm(){ return m; }
         int getn(){ return n; }
@@ -144,6 +149,7 @@ class KalmanComposite : public Observer {
         ~KalmanComposite();
 
         void update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y);
+        std::map<std::string, Eigen::MatrixXd> uncertainty();
         std::map<std::string, Eigen::VectorXd> state();
 
         void addKalmanX(KalmanFilter *obs);
