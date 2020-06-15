@@ -89,7 +89,7 @@ private:
 
 	double g = 9.81;	     // gravity
 	double Mc = 35.1954;   // [kg] mass of the robot
-  Eigen::Vector3d externalForce = Eigen::Vector3d(100.0, 0.0, 0.0);
+  Eigen::Vector3d externalForce = Eigen::Vector3d(0.0, 20.0, 0.0);
 
   bool supportFoot;
   bool LEFT = false;

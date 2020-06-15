@@ -42,7 +42,7 @@ std::map<std::string, Eigen::MatrixXd> CompositeObserver::uncertainty() {
     return m;
 }
 
-/* ---------- Lunenberg --------------- */
+/* ---------- Luenberger --------------- */
 
 LuenbergerObserver::LuenbergerObserver(
             const Eigen::MatrixXd& A,
@@ -220,6 +220,75 @@ std::map<std::string, Eigen::VectorXd> KalmanFilter::state(){
 
 // Returns current covariance estimate
 std::map<std::string, Eigen::MatrixXd> KalmanFilter::uncertainty(){
+    std::map<std::string, Eigen::MatrixXd> map;
+    map[name] = P;
+    return map;
+}
+
+// -------------------- Stephens -----------------------
+
+// Constructor implementation
+StephensFilter::StephensFilter(const Eigen::MatrixXd& A,
+                               const Eigen::MatrixXd& B,
+                               const Eigen::MatrixXd& C, 
+                               const Eigen::MatrixXd& Q,
+                               const Eigen::MatrixXd& R, std::string name, int axis) : LeafObserver(name, axis) {
+    this->A = A;
+    this->B = B;
+    this->C = C;
+    this->Q = Q;
+    this->R = R;
+    m = C.rows();
+    n = A.rows();
+    xAct.resize(n);
+}
+
+
+// KF initialization no guessing
+void StephensFilter::init(){
+    int f = pow(10, 2);
+    xAct.setZero();
+    P.resize(n,n);
+    P = f*P.setIdentity();
+}
+
+// KF initialization with guessing
+void StephensFilter::init(const Eigen::VectorXd& x0, const Eigen::MatrixXd& P0){
+    xAct = x0;
+    P = P0;
+}
+
+// Update function implementation
+void StephensFilter::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y){
+    Eigen::VectorXd u(1);
+    u = U.row(axis);
+    Eigen::Vector2d y;
+    if (axis == 2) {
+         y << Y.row(axis)[0], 0.0;
+    } else {
+         y << Y.row(axis)[0], Y.row(axis)[1];
+    }
+    // Prediction step
+
+    xAct = A*xAct + B*u;
+    P = A*P*A.transpose() + Q;
+
+    // Correction step
+    G = P*C.transpose()*(C*P*C.transpose()+R).inverse();
+    NI = y - C*xAct;
+    xAct = xAct + G*NI;
+    P = P - G*C*P;
+}
+
+
+// Returns current state estimate
+std::map<std::string, Eigen::VectorXd> StephensFilter::state(){
+    std::map<std::string, Eigen::VectorXd> map;
+    map[name] = xAct;
+    return map;
+}
+
+std::map<std::string, Eigen::MatrixXd> StephensFilter::uncertainty(){
     std::map<std::string, Eigen::MatrixXd> map;
     map[name] = P;
     return map;

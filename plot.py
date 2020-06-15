@@ -98,7 +98,7 @@ if __name__ == '__main__':
     quantity = args.quantity
 
     # Data observers
-    observer_lists = ['lunemberger', 'kalman_filter', 'stephens']
+    observer_lists = ['luenberger', 'kalman_filter', 'stephens']
     n_obs = [5,5,4]
 
     state_l = ['com_pos', 'com_vel', 'zmp_pos', 'force', 'dforce']

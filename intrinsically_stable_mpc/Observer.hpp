@@ -165,3 +165,73 @@ class KalmanComposite : public Observer {
         KalmanFilter *kalmanZ;
 };
 
+// -------------------- Stephens -----------------------
+
+class StephensFilter : public LeafObserver {
+
+public:
+
+    /*
+    Class constructor
+
+    @param A: system dynamics matrix
+    @param B: input matrix
+    @param C: output matrix
+    @param Q: process noice covariance 
+    @param R: output noise covariance
+    @param P: estimate error covariance
+    */
+    StephensFilter(
+            const Eigen::MatrixXd& A,
+            const Eigen::MatrixXd& B,
+            const Eigen::MatrixXd& C,
+            const Eigen::MatrixXd& Q,
+            const Eigen::MatrixXd& R, std::string name, int axis);
+
+
+    /*
+    Initialization of the Kalman Filter
+    */
+    void init();
+
+
+    /*
+    Initialization of the Kalman Filter with initial guessing
+
+    @param x0: initial estimate of state system
+    @param P0: initial covariance estimate
+    */
+    void init(const Eigen::VectorXd& x0, const Eigen::MatrixXd& P0);
+
+
+    /*
+    Update step (contains both prediction and correction)
+
+    @param x_ vectpr of inputs
+    @param y: vector of measurements
+    */
+    void update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y);
+
+    
+    /*
+    Returns the current estimate of the system state
+    */
+    std::map<std::string, Eigen::VectorXd> state();
+
+    /*
+    Returns the current covariance
+    */
+    std::map<std::string, Eigen::MatrixXd> uncertainty();
+
+
+    /*
+    Returns the current timestep
+    */
+    double getTimestep();
+
+
+    private:
+        int m, n; // System dimensions
+        Eigen::MatrixXd A, B, C, Q, R, P, G, NI; //Kalman Filter matrices
+};
+
