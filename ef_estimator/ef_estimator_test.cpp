@@ -56,7 +56,7 @@ int main(){
          0, output_noise;
 
     A << 1,           dt,             0, 0,
-         pow(ni,2)*dt, 1, -pow(ni,2)*dt, 1, 
+         pow(ni,2)*dt, 1, -pow(ni,2)*dt, dt, 
          0,            0,             1, 0, 
          0,            0,             0, 1;
         
