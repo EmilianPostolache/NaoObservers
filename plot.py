@@ -133,7 +133,7 @@ if __name__ == '__main__':
 
 
     # Extract and Plot data
-    dt = 1/60       # sampling rate
+    dt = 1/100       # sampling rate
 
     if path_estimates_x != None and path_gt_x != None:
 
