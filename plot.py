@@ -15,8 +15,9 @@ parser.add_argument('--pathESTz', dest='path_estimates_z', type=str, help='Path 
 parser.add_argument('--pathGTx', dest='path_gt_x', type=str, help='Path to ground truth data.txt file along x', required=False)
 parser.add_argument('--pathGTy', dest='path_gt_y', type=str, help='Path to ground truth data.txt file along y', required=False)
 parser.add_argument('--pathGTz', dest='path_gt_z', type=str, help='Path to ground truth data.txt file along z', required=False)
+parser.add_argument('--margin', dest = 'margin', type=float, help='Margin for the groundtruth plot', default=1.0)
 parser.add_argument('--observer', dest='observer', type=str, help='Observer from which the data was produced (e.g. lunemberger, kalman_filter, stephens)', required=True)
-parser.add_argument('--quantity', dest='quantity', default = 'force', type=str, help='Quantity to plot (e.g. com_pos, com_vel, com_acc, zmp_pos, cop_pos, force, dforce)')
+parser.add_argument('--quantity', dest='quantity', type=str, help='Quantity to plot (e.g. com_pos, com_vel, com_acc, zmp_pos, cop_pos, force, dforce)', required=False)
 
 args = parser.parse_args()
 
@@ -57,15 +58,18 @@ def readData(path, n):
 # @param u: customized udm
 # @return void: plots the data
 
-def plot(t, est, gt, lab, a, u):
+def plot(t, est, gt, lab, a, u, i):
 
+    plt.figure(i+1)
     plt.plot(t, est, 'r', linewidth=2.0, label='Estimates')
     plt.plot(t, gt,  'b', linewidth=2.0, label='Ground truth')
+    plt.fill_between(t, gt-margin, gt+margin, alpha=0.2)
     plt.xlabel('Time [s]')
     plt.ylabel(lab +' along axis ' + a + ' '+u)
     plt.grid(True)
     plt.legend()
-    plt.show()
+    #plt.show()
+    #return plt
 
 
 # --- Function that plots the estimated and ground truth data. ---
@@ -78,6 +82,7 @@ def plotNorm(t, est, gt):
 
     plt.plot(t, est, 'r', linewidth=2.0, label='Estimates')
     plt.plot(t, gt,  'b', linewidth=2.0, label='Ground truth')
+    plt.fill_between(t, gt-margin, gt+margin, alpha=0.2)
     plt.xlabel('Time [s]')
     plt.ylabel('Norm of External Force [N]')
     plt.grid(True)
@@ -96,6 +101,7 @@ if __name__ == '__main__':
     path_gt_z = args.path_gt_z
     observer = args.observer
     quantity = args.quantity
+    margin = args.margin
 
     # Data observers
     observer_lists = ['luenberger', 'kalman_filter', 'stephens']
@@ -121,9 +127,10 @@ if __name__ == '__main__':
         o = observer_lists.index(observer)
         n = n_obs[o]
         try:
-            q = states[o].index(quantity)
-            y_label = y_labels[o][q]
-            udm = udms[o][q]
+            if quantity!=None:
+                q = [states[o].index(quantity)]
+            else:
+                q = np.arange(n_obs[o])
         except:
             print('Component '+quantity+" was not estimated in the "+observer+ " observer.")
             sys.exit()
@@ -137,34 +144,52 @@ if __name__ == '__main__':
 
     if path_estimates_x != None and path_gt_x != None:
 
-        data_est_x = readData(path_estimates_x, n)
-        data_gt_x = readData(path_gt_x, n)
-        timesteps = np.arange(0, dt*len(data_est_x), dt)
-        values_est_x = data_est_x[:,q]
-        values_gt_x = data_gt_x[:,q]
-        plot(timesteps, values_est_x, values_gt_x, y_label, 'x', udm)
+        for i in q:
+
+            y_label = y_labels[o][i]
+            udm = udms[o][i]
+            data_est_x = readData(path_estimates_x, n)
+            data_gt_x = readData(path_gt_x, n)
+            timesteps = np.arange(0, dt*len(data_est_x), dt)
+            values_est_x = data_est_x[:,i]
+            values_gt_x = data_gt_x[:,i]
+            plot(timesteps, values_est_x, values_gt_x, y_label, 'x', udm, i)
+        plt.show()
     
     if path_estimates_y != None and path_gt_y != None:
 
-        data_est_y = readData(path_estimates_y, n)
-        data_gt_y = readData(path_gt_y, n)
-        timesteps = np.arange(0, dt*len(data_est_y), dt)
-        values_est_y = data_est_y[:,q]
-        values_gt_y = data_gt_y[:,q]
-        plot(timesteps, values_est_y, values_gt_y, y_label, 'y', udm)
+        for i in q:
+
+            y_label = y_labels[o][i]
+            udm = udms[o][i]
+            data_est_y = readData(path_estimates_y, n)
+            data_gt_y = readData(path_gt_y, n)
+            timesteps = np.arange(0, dt*len(data_est_y), dt)
+            values_est_y = data_est_y[:,i]
+            values_gt_y = data_gt_y[:,i]
+            plot(timesteps, values_est_y, values_gt_y, y_label, 'y', udm, i)
+        plt.show()
 
     if path_estimates_z != None and path_gt_z != None:
 
-        data_est_z = readData(path_estimates_z, n)
-        data_gt_z = readData(path_gt_z, n)
-        timesteps = np.arange(0, dt*len(data_est_z), dt)
-        values_est_z = data_est_z[:,q]
-        values_gt_z = data_gt_z[:,q]
-        plot(timesteps, values_est_z, values_gt_z, y_label, 'z', udm)
-    
+        for i in q:
 
-    if None not in [path_estimates_x, path_gt_x, path_estimates_y, path_gt_y, path_estimates_z, path_gt_z] and quantity=='force':
+            y_label = y_labels[o][i]
+            udm = udms[o][i]
+            data_est_z = readData(path_estimates_z, n)
+            data_gt_z = readData(path_gt_z, n)
+            timesteps = np.arange(0, dt*len(data_est_z), dt)
+            values_est_z = data_est_z[:,i]
+            values_gt_z = data_gt_z[:,i]
+            plot(timesteps, values_est_z, values_gt_z, y_label, 'z', udm, i)
+        plt.show()
 
+    if None not in [path_estimates_x, path_gt_x, path_estimates_y, path_gt_y, path_estimates_z, path_gt_z]:
+
+        i = states[o].index('force')
+        values_est_x = data_est_x[:,i]
+        values_est_y = data_est_y[:,i]
+        values_est_z = data_est_z[:,i]
         values_est_x = values_est_x[:, np.newaxis]
         values_est_y = values_est_y[:, np.newaxis]
         values_est_z = values_est_z[:, np.newaxis]
