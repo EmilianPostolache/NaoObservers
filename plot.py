@@ -18,6 +18,7 @@ parser.add_argument('--pathGTz', dest='path_gt_z', type=str, help='Path to groun
 parser.add_argument('--margin', dest = 'margin', type=float, help='Margin for the groundtruth plot', default=1.0)
 parser.add_argument('--observer', dest='observer', type=str, help='Observer from which the data was produced (e.g. lunemberger, kalman_filter, stephens)', required=True)
 parser.add_argument('--quantity', dest='quantity', type=str, help='Quantity to plot (e.g. com_pos, com_vel, com_acc, zmp_pos, cop_pos, force, dforce)', required=False)
+parser.add_argument('--pathSavings', dest='path_saving', type=str, help='Path to folder where to save plots', default='./plots/')
 
 args = parser.parse_args()
 
@@ -56,11 +57,11 @@ def readData(path, n):
 # @param lab: customized label for y axis
 # @param a: customized axis of data
 # @param u: customized udm
-# @return void: plots the data
+# @return fig: return the figure
 
 def plot(t, est, gt, lab, a, u, i):
 
-    plt.figure(i+1)
+    fig = plt.figure(i+1)
     plt.plot(t, est, 'r', linewidth=2.0, label='Estimates')
     plt.plot(t, gt,  'b', linewidth=2.0, label='Ground truth')
     plt.fill_between(t, gt-margin, gt+margin, alpha=0.2)
@@ -69,17 +70,18 @@ def plot(t, est, gt, lab, a, u, i):
     plt.grid(True)
     plt.legend()
     #plt.show()
-    #return plt
+    return fig
 
 
 # --- Function that plots the estimated and ground truth data. ---
 # @param t: ndarray, timesteps
 # @param est: ndarray, estimated data
 # @param gt: ndarray, ground truth data
-# @return void: plots the data
+# @return fig: return the figure
 
 def plotNorm(t, est, gt):
 
+    fig = plt.figure(1)
     plt.plot(t, est, 'r', linewidth=2.0, label='Estimates')
     plt.plot(t, gt,  'b', linewidth=2.0, label='Ground truth')
     plt.fill_between(t, gt-margin, gt+margin, alpha=0.2)
@@ -88,6 +90,7 @@ def plotNorm(t, est, gt):
     plt.grid(True)
     plt.legend()
     plt.show()
+    return fig
 
 
 if __name__ == '__main__':
@@ -102,6 +105,7 @@ if __name__ == '__main__':
     observer = args.observer
     quantity = args.quantity
     margin = args.margin
+    path_saving = args.path_saving
 
     # Data observers
     observer_lists = ['luenberger', 'kalman_filter', 'stephens']
@@ -144,6 +148,7 @@ if __name__ == '__main__':
 
     if path_estimates_x != None and path_gt_x != None:
 
+        figs = []
         for i in q:
 
             y_label = y_labels[o][i]
@@ -153,8 +158,19 @@ if __name__ == '__main__':
             timesteps = np.arange(0, dt*len(data_est_x), dt)
             values_est_x = data_est_x[:,i]
             values_gt_x = data_gt_x[:,i]
-            plot(timesteps, values_est_x, values_gt_x, y_label, 'x', udm, i)
+            fig_i = plot(timesteps, values_est_x, values_gt_x, y_label, 'x', udm, i)
+            figs.append(fig_i)
         plt.show()
+        print('Do you want to save these plots? [y/n]')
+        dec = input()
+        if dec == 'y':
+            for i, item in enumerate(q):
+                path_save = path_saving + observer_lists[o] + '/'+ states[o][item]+'_x'
+                figs[i].savefig(path_save, format='svg')
+            print('Saved.')
+        else:
+            print('Discarded.')
+            
     
     if path_estimates_y != None and path_gt_y != None:
 
@@ -169,6 +185,16 @@ if __name__ == '__main__':
             values_gt_y = data_gt_y[:,i]
             plot(timesteps, values_est_y, values_gt_y, y_label, 'y', udm, i)
         plt.show()
+        print('Do you want to save these plots? [y/n]')
+        dec = input()
+        if dec == 'y':
+            for i, item in enumerate(q):
+                path_save = path_saving + observer_lists[o] + '/'+ states[o][item]+'_y'
+                figs[i].savefig(path_save, format='svg')
+            print('Saved.')
+        else:
+            print('Discarded.')
+        
 
     if path_estimates_z != None and path_gt_z != None:
 
@@ -183,6 +209,15 @@ if __name__ == '__main__':
             values_gt_z = data_gt_z[:,i]
             plot(timesteps, values_est_z, values_gt_z, y_label, 'z', udm, i)
         plt.show()
+        print('Do you want to save these plots? [y/n]')
+        dec = input()
+        if dec == 'y':
+            for i, item in enumerate(q):
+                path_save = path_saving + observer_lists[o] + '/'+ states[o][item]+'_z'
+                figs[i].savefig(path_save, format='svg')
+            print('Saved.')
+        else:
+            print('Discarded.')
 
     if None not in [path_estimates_x, path_gt_x, path_estimates_y, path_gt_y, path_estimates_z, path_gt_z]:
 
@@ -202,4 +237,12 @@ if __name__ == '__main__':
         tot_gt = np.concatenate((values_gt_x, values_gt_y, values_gt_z), axis=1)
         norm_gt = LA.norm(tot_gt, axis=1)
 
-        plotNorm(timesteps, norm_est, norm_gt)
+        figure = plotNorm(timesteps, norm_est, norm_gt)
+        print('Do you want to save this plot? [y/n]')
+        dec = input()
+        if dec == 'y':
+            figure.savefig(path_saving + observer_lists[o] + '/force_norm', format='svg')
+            print('Saved.')
+        else:
+            print('Discarded.')
+    print('Process terminated.')
