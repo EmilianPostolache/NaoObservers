@@ -77,7 +77,10 @@ void LuenbergerObserver::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd&
     } else {
         y << Y.row(this->axis)[0], Y.row(this->axis)[1];
     }
-    xAct = (A * xAct) + (B * u) + (G*(y - C*xAct));
+    
+    Eigen::VectorXd xD = (A * xAct) + (B * u) + (G*(y - C*xAct));
+    xAct = xD * 1.00/100.00 + xAct;
+    // xAct = (A * xAct) + (B * u) + (G*(y - C*xAct));
 }
 
 std::map<std::string, Eigen::VectorXd> LuenbergerObserver::state(){
@@ -175,7 +178,6 @@ KalmanFilter::KalmanFilter(const Eigen::MatrixXd& A,
 
 // KF initialization no guessing
 void KalmanFilter::init(){
-
     int f = pow(10, 2);
     xAct.setZero();
     P.resize(n,n);
@@ -264,9 +266,9 @@ void StephensFilter::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y){
     u = U.row(axis);
     Eigen::Vector2d y;
     if (axis == 2) {
-         y << Y.row(axis)[0], 0.0;
+        y << Y.row(axis)[0], 0.0;//, 0.0;
     } else {
-         y << Y.row(axis)[0], Y.row(axis)[1];
+        y << Y.row(axis)[0], Y.row(axis)[1];//Y.row(axis)[2], Y.row(axis)[1];
     }
     // Prediction step
 
@@ -293,3 +295,4 @@ std::map<std::string, Eigen::MatrixXd> StephensFilter::uncertainty(){
     map[name] = P;
     return map;
 }
+

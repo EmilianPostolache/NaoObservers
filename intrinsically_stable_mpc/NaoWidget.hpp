@@ -17,7 +17,7 @@ public:
 		dart::simulation::WorldPtr world);
 
   // Documentation inherited
-  void render() override;\
+  void render() override;
 
 protected:
 
@@ -25,6 +25,12 @@ protected:
   void setReferenceVelocityX(double);
   void setReferenceVelocityY(double);
   void setReferenceVelocityOmega(double);
+  void setExternalForceStartFrame(int);
+  void setExternalForceX(float);
+  void setExternalForceY(float);
+  void setExternalForceZ(float);
+  void setExternalForcePeriodicPhase(float);
+  void setExternalForcePeriodicFrequency(float);
 
   dart::gui::osg::ImGuiViewer* mViewer;
 
@@ -61,6 +67,20 @@ protected:
   int mControlMode;
   int mBeheavior;
 
+  // External forces
+  int mGuiExternalForceMode;
+  /// Actual external force mode
+  ///   - 0: Constant external force
+  ///   - 1: Periodic external force
+  int mExternalForceMode;
+  int mGuiExternalForceStartFrame;
+
+  float mGuiExternalForceX;
+  float mGuiExternalForceY;
+  float mGuiExternalForceZ;
+
+  float mGuiExternalForcePeriodicFrequency;
+  float mGuiExternalForcePeriodicPhase;
 };
 
 #endif // DART_EXAMPLE_OSG_OSGATLASSIMBICON_ATLASSIMBICONWIDGET_HPP_

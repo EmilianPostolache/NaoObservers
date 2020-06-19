@@ -21,9 +21,17 @@ NaoWidget::NaoWidget(
     mComHeight(mGuiComHeight),
     mGuiHeadlights(true),
     mGuiControlMode(2),
-    mGuiBeheavior(2),
+    mGuiBeheavior(0),
     mControlMode(2),
-    mBeheavior(2),
+    mBeheavior(0),
+    mExternalForceMode(0),
+    mGuiExternalForceMode(0),
+    mGuiExternalForceStartFrame(250),
+    mGuiExternalForceX(0.0),
+    mGuiExternalForceY(0.0),
+    mGuiExternalForceZ(0.0),
+    mGuiExternalForcePeriodicPhase(0.0),
+    mGuiExternalForcePeriodicFrequency(1.0),
     mGuiComRoll(mNode->getController()->getBalanceFootPos()(0)),
     mGuiComPitch(mNode->getController()->getBalanceFootPos()(1)),
     mGuiComYaw(mNode->getController()->getBalanceFootPos()(2)),
@@ -97,6 +105,7 @@ void NaoWidget::render()
     // Balance Point
     ImGui::RadioButton("Beheavior: Walk", &mGuiBeheavior, 1);
     ImGui::RadioButton("Beheavior: Balance", &mGuiBeheavior, 0);
+    ImGui::RadioButton("Beheavior: Free Balance", &mGuiBeheavior, 2);
 
     if (mGuiBeheavior != mBeheavior)
     {
@@ -107,6 +116,9 @@ void NaoWidget::render()
           break;
         case 1:
           mNode->getController()->setBeheaviorWalk();
+          break;
+        case 2:
+          mNode->getController()->setBeheaviorFreeBalance();
           break;
       }
 
@@ -238,6 +250,70 @@ void NaoWidget::render()
     ImGui::Spacing();
   }
 
+  // -------------------------- External Forces ---------------------
+
+  if (ImGui::CollapsingHeader("External Forces Options", ImGuiTreeNodeFlags_DefaultOpen)) {
+    // Balance Point
+    ImGui::RadioButton("External force mode: Constant", &mGuiExternalForceMode, 0);
+    ImGui::RadioButton("External force mode: Periodic", &mGuiExternalForceMode, 1);
+
+    if (mGuiExternalForceMode != mExternalForceMode) {
+      switch (mGuiBeheavior) {
+        case 0:
+          mNode->getController()->setExternalForceConstant();
+          break;
+        case 1:
+          mNode->getController()->setExternalForcePeriodic();
+          break;
+      }
+      mExternalForceMode = mGuiExternalForceMode;
+    }
+
+    // ImGui::Spacing();
+    // // Reference Velocity Omega
+    // ImGui::SliderInt("start frame", &mGuiExternalForceStartFrame, 0, 1000, "%d");
+    // setExternalForceStartFrame(mGuiExternalForceStartFrame);
+
+    ImGui::Spacing();
+
+    // External force start frame
+    ImGui::SliderInt("start frame", &mGuiExternalForceStartFrame, 0, 1000);
+    setExternalForceStartFrame(mGuiExternalForceStartFrame);
+    
+    ImGui::Spacing();
+
+    // External force x
+    ImGui::SliderFloat("ext force x", &mGuiExternalForceX, -200.0, 200.0, "%.2f");
+    setExternalForceX(mGuiExternalForceX);
+    
+    ImGui::Spacing();
+
+    // External force y
+    ImGui::SliderFloat("ext force y", &mGuiExternalForceY, -200.0, 200.0, "%.2f");
+    setExternalForceY(mGuiExternalForceY);
+    
+    ImGui::Spacing();
+
+    // External force z
+    ImGui::SliderFloat("ext force z", &mGuiExternalForceZ, -200.0, 200.0, "%.2f");
+    setExternalForceZ(mGuiExternalForceZ);
+
+    ImGui::Spacing();
+
+    // Periodic phase
+    ImGui::SliderFloat("extf periodic phase", &mGuiExternalForcePeriodicPhase,
+     0.0, 10.0, "%.2f");
+    setExternalForcePeriodicPhase(mGuiExternalForcePeriodicPhase);
+
+    ImGui::Spacing();
+
+    // Periodic frequency
+    ImGui::SliderFloat("extf periodic freq", &mGuiExternalForcePeriodicFrequency,
+     0.0, 2.0, "%.2f");
+    setExternalForcePeriodicFrequency(mGuiExternalForcePeriodicFrequency);
+
+    ImGui::Spacing();
+  }
 
   ImGui::End();
 }
@@ -262,4 +338,34 @@ void NaoWidget::setReferenceVelocityY(double ref) {
 
 void NaoWidget::setReferenceVelocityOmega(double ref) {
 	mNode->getController()->setReferenceVelocityOmega(ref);
+}
+
+void NaoWidget::setExternalForceStartFrame(int start)
+{
+  mNode->getController()->setExternalForceStartFrame(start);
+}
+
+void NaoWidget::setExternalForceX(float f)
+{
+  mNode->getController()->setExternalForceX(f);
+}
+
+void NaoWidget::setExternalForceY(float f)
+{
+  mNode->getController()->setExternalForceY(f);
+}
+
+void NaoWidget::setExternalForceZ(float f)
+{
+  mNode->getController()->setExternalForceZ(f);
+}
+
+void NaoWidget::setExternalForcePeriodicPhase(float phi)
+{
+  mNode->getController()->setExternalForcePeriodicPhase(phi);
+}
+
+void NaoWidget::setExternalForcePeriodicFrequency(float k)
+{
+  mNode->getController()->setExternalForcePeriodicFrequency(k);
 }

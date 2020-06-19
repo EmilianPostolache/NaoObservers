@@ -13,7 +13,7 @@ public:
   virtual ~Controller();
 
   std::pair<Eigen::Vector3d, double> getZmpFromWrench();
-  Eigen::Vector3d getZmpFromExternalForces();
+  std::pair<Eigen::Vector3d, Eigen::Vector2d> getZmpFromExternalForces();
   Eigen::Vector3d getZmpFromAngularMomentum();
 
   void update();
@@ -63,6 +63,7 @@ public:
   void setBalancePointCom();
   void setBalancePointTorso();
   void setBeheaviorBalance();
+  void setBeheaviorFreeBalance();
   void setBeheaviorWalk();
   void setVelGain(double);
   void setZmpGain(double);
@@ -72,7 +73,17 @@ public:
   Eigen::VectorXd getBalanceBasePos();
   Eigen::VectorXd getBalanceFootPos();
 
-  void applyForce(Eigen::Vector3d);
+  // External forces
+  void setExternalForceConstant();
+  void setExternalForcePeriodic();
+  void setExternalForceStartFrame(int);
+  void setExternalForceX(float);
+  void setExternalForceY(float);
+  void setExternalForceZ(float);
+  void setExternalForcePeriodicPhase(float);
+  void setExternalForcePeriodicFrequency(float);
+
+  Eigen::Vector3d getExternalForce();
 
 private:
   dart::dynamics::SkeletonPtr mRobot;
@@ -89,7 +100,8 @@ private:
 
 	double g = 9.81;	     // gravity
 	double Mc = 35.1954;   // [kg] mass of the robot
-  Eigen::Vector3d externalForce = Eigen::Vector3d(0.0, 20.0, 0.0);
+  Eigen::Vector3d lastMeasZmp;
+  Eigen::Vector3d measZmp;
 
   bool supportFoot;
   bool LEFT = false;
@@ -101,9 +113,10 @@ private:
   bool TORSO = false;
   bool COM = true;
 
-  bool beheavior;
-  bool BALANCE = false;
-  bool WALK = true;
+  int beheavior;
+  int BALANCE = 0;
+  int WALK = 1;
+  int FREE_BALANCE = 2;
 
   double singleSupportDuration, doubleSupportDuration;
 
@@ -127,4 +140,14 @@ private:
 
   // Observer
   CompositeObserver* observers;
+
+  // External  force
+  int EXTFORCE_CONST = 0;
+  int EXTFORCE_PERIODIC = 1;
+
+  Eigen::Vector3d externalForce = Eigen::Vector3d(0.0, 0.0, 0.0);
+  int externalForceMode = 0;
+  float externalForcePeriodicPhase = 0.0;
+  float externalForcePeriodicFrequency = 1.0;
+  int externalForceStartFrame = 250;
 };
