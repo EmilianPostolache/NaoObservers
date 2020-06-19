@@ -174,6 +174,7 @@ if __name__ == '__main__':
     
     if path_estimates_y != None and path_gt_y != None:
 
+        figs = []
         for i in q:
 
             y_label = y_labels[o][i]
@@ -183,7 +184,8 @@ if __name__ == '__main__':
             timesteps = np.arange(0, dt*len(data_est_y), dt)
             values_est_y = data_est_y[:,i]
             values_gt_y = data_gt_y[:,i]
-            plot(timesteps, values_est_y, values_gt_y, y_label, 'y', udm, i)
+            fig_i = plot(timesteps, values_est_y, values_gt_y, y_label, 'y', udm, i)
+            figs.append(fig_i)
         plt.show()
         print('Do you want to save these plots? [y/n]')
         dec = input()
@@ -198,6 +200,7 @@ if __name__ == '__main__':
 
     if path_estimates_z != None and path_gt_z != None:
 
+        figs = []
         for i in q:
 
             y_label = y_labels[o][i]
@@ -207,7 +210,8 @@ if __name__ == '__main__':
             timesteps = np.arange(0, dt*len(data_est_z), dt)
             values_est_z = data_est_z[:,i]
             values_gt_z = data_gt_z[:,i]
-            plot(timesteps, values_est_z, values_gt_z, y_label, 'z', udm, i)
+            fig_i = plot(timesteps, values_est_z, values_gt_z, y_label, 'z', udm, i)
+            figs.append(fig_i)
         plt.show()
         print('Do you want to save these plots? [y/n]')
         dec = input()
