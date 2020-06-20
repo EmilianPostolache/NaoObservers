@@ -391,7 +391,6 @@ Eigen::Vector3d Controller::getExternalForce(){
 		// std::cout << "applying force!" << std::endl;
 		// mTorso->setExtForce(Eigen::Vector3d(10*cos(mWorld->getSimFrames()*0.01),10*sin(mWorld->getSimFrames()*0.01),0.0));  
 		//force = externalForce;
-
 		// Constant force
 		if (externalForceMode == 0) {
 			return externalForce;
