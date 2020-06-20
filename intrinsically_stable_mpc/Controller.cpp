@@ -386,7 +386,7 @@ void Controller::setExternalForcePeriodicFrequency(float k){
 }
 
 Eigen::Vector3d Controller::getExternalForce(){
-	// std::cout << externalForceStartFrame << std::endl;
+	// std::cout << externalForceMode << std::endl;
 	if (mWorld->getSimFrames()>=externalForceStartFrame && mWorld->getSimFrames()<=10000000) {
 		// std::cout << "applying force!" << std::endl;
 		// mTorso->setExtForce(Eigen::Vector3d(10*cos(mWorld->getSimFrames()*0.01),10*sin(mWorld->getSimFrames()*0.01),0.0));  
@@ -523,7 +523,7 @@ void Controller::storeData() {
 	// std::ofstream fout8("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmpPositionMeasured.txt", std::ofstream::app);
    	// fout8 << (mSupportFoot->getCOM() + mRobot->getCOM() - mSupportFoot->getCOM()).transpose() - mRobot->getCOMLinearAcceleration().transpose()/(solver->getOmega()*solver->getOmega()) << std::endl;
 
-	// Logs for observers
+	//---------------------- luenberger ----------------------
 
 	std::map<std::string, Eigen::VectorXd> states = observers->state();
 	Eigen::Vector3d force = getExternalForce();
@@ -565,7 +565,9 @@ void Controller::storeData() {
 	// 	   << force[2] <<  " "
 	// 	   << 0.0 <<std::endl;
 
+	//---------------------- kalman ----------------------
 
+	//TODO: non scordarci di aggiungere le derivate corrette della forza misurate
 
 	std::ofstream fout15("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x.txt", std::ofstream::app);
 	fout15 << states["kalman_x"].transpose() << std::endl;
@@ -575,7 +577,7 @@ void Controller::storeData() {
 	       << mTorso->getCOMLinearVelocity()[0] << " " 
 		   << mTorso->getCOMLinearAcceleration()[0] << " "
 		   << force[0] <<  " "
-		   << 0.0 << std::endl;
+		   << measZmp[0] << std::endl;
 
 	std::ofstream fout17("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y.txt", std::ofstream::app);
 	fout17 << states["kalman_y"].transpose() << std::endl;
@@ -585,27 +587,27 @@ void Controller::storeData() {
 		<< mTorso->getCOMLinearVelocity()[1] << " " 
 		<< mTorso->getCOMLinearAcceleration()[1] << " "
 		<< force[1] <<  " "
-		<< 0.0 << std::endl;
+		<< measZmp[1] << std::endl;
 
 	std::ofstream fout19("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z.txt", std::ofstream::app);
 
 	Eigen::VectorXd stateKalmanZ = states["kalman_z"];
-	std::pair<Eigen::Vector3d, Eigen::Vector2d> fromExtForces = this->getZmpFromExternalForces();
-	Eigen::Vector2d measGrf = fromExtForces.second;
-	stateKalmanZ[4] = measGrf[0];
 	//stateKalmanZ[4] = -Mc*g - Mc * stateKalmanZ[2] + stateKalmanZ[3];
 	fout19 << stateKalmanZ.transpose() << std::endl;
 
 	//std::pair<Eigen::Vector3d, double> wrench = this->getZmpFromWrench();
 	//double grf = -wrench.second;
-
+	std::pair<Eigen::Vector3d, Eigen::Vector2d> fromExtForces = this->getZmpFromExternalForces();
+	Eigen::Vector2d measGrf = fromExtForces.second;
 
 	std::ofstream fout20("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z_gt.txt", std::ofstream::app);
 	fout20 << mTorso->getCOM()[2] << " " // - mSupportFoot->getCOM()[2] << " "
 		<< mTorso->getCOMLinearVelocity()[2] << " " 
 		<< mTorso->getCOMLinearAcceleration()[2] << " "
 		<< force[2] <<  " "
-		<< measGrf[1] << std::endl;
+		<< -(measGrf[0]+measGrf[1])*Mc+Mc*g << std::endl;
+
+	//---------------------- stephens ----------------------
 
 	std::ofstream fout21("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x.txt", std::ofstream::app);
 	state = states["stephens_x"];

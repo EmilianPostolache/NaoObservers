@@ -21,9 +21,9 @@ NaoWidget::NaoWidget(
     mComHeight(mGuiComHeight),
     mGuiHeadlights(true),
     mGuiControlMode(2),
-    mGuiBeheavior(0),
+    mGuiBeheavior(1),
     mControlMode(2),
-    mBeheavior(0),
+    mBeheavior(1),
     mExternalForceMode(0),
     mGuiExternalForceMode(0),
     mGuiExternalForceStartFrame(250),
@@ -283,19 +283,19 @@ void NaoWidget::render()
     ImGui::Spacing();
 
     // External force x
-    ImGui::SliderFloat("ext force x", &mGuiExternalForceX, -200.0, 200.0, "%.2f");
+    ImGui::SliderFloat("ext force x", &mGuiExternalForceX, 0.0, 200.0, "%.2f");
     setExternalForceX(mGuiExternalForceX);
     
     ImGui::Spacing();
 
     // External force y
-    ImGui::SliderFloat("ext force y", &mGuiExternalForceY, -200.0, 200.0, "%.2f");
+    ImGui::SliderFloat("ext force y", &mGuiExternalForceY, 0.0, 200.0, "%.2f");
     setExternalForceY(mGuiExternalForceY);
     
     ImGui::Spacing();
 
     // External force z
-    ImGui::SliderFloat("ext force z", &mGuiExternalForceZ, -200.0, 200.0, "%.2f");
+    ImGui::SliderFloat("ext force z", &mGuiExternalForceZ, 0.0, 200.0, "%.2f");
     setExternalForceZ(mGuiExternalForceZ);
 
     ImGui::Spacing();
@@ -309,7 +309,7 @@ void NaoWidget::render()
 
     // Periodic frequency
     ImGui::SliderFloat("extf periodic freq", &mGuiExternalForcePeriodicFrequency,
-     0.0, 2.0, "%.2f");
+     0.0, 1.0, "%.2f");
     setExternalForcePeriodicFrequency(mGuiExternalForcePeriodicFrequency);
 
     ImGui::Spacing();
