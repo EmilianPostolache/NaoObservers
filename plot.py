@@ -15,10 +15,10 @@ parser.add_argument('--pathESTz', dest='path_estimates_z', type=str, help='Path 
 parser.add_argument('--pathGTx', dest='path_gt_x', type=str, help='Path to ground truth data.txt file along x', required=False)
 parser.add_argument('--pathGTy', dest='path_gt_y', type=str, help='Path to ground truth data.txt file along y', required=False)
 parser.add_argument('--pathGTz', dest='path_gt_z', type=str, help='Path to ground truth data.txt file along z', required=False)
-parser.add_argument('--margin', dest = 'margin', type=float, help='Margin for the groundtruth plot', default=1.0)
-parser.add_argument('--observer', dest='observer', type=str, help='Observer from which the data was produced (e.g. lunemberger, kalman_filter, stephens)', required=True)
+parser.add_argument('--margin', dest = 'margin', type=float, help='Margin for the ground truth plot', default=0.05)
+parser.add_argument('--observer', dest='observer', type=str, help='Observer from which the data was produced (e.g. lunemberger, kalman, stephens)', required=True)
 parser.add_argument('--quantity', dest='quantity', type=str, help='Quantity to plot (e.g. com_pos, com_vel, com_acc, zmp_pos, cop_pos, force, dforce)', required=False)
-parser.add_argument('--pathSavings', dest='path_saving', type=str, help='Path to folder where to save plots', default='./plots/')
+parser.add_argument('--pathSavings', dest='path_saving', type=str, help='Path to folder where to save plots', default='../')
 
 args = parser.parse_args()
 
@@ -63,8 +63,9 @@ def plot(t, est, gt, lab, a, u, i):
 
     fig = plt.figure(i+1)
     plt.plot(t, est, 'r', linewidth=2.0, label='Estimates')
-    plt.plot(t, gt,  'b', linewidth=2.0, label='Ground truth')
-    plt.fill_between(t, gt-margin, gt+margin, alpha=0.2)
+    plt.plot(t, gt,  'b:', linewidth=2.0, label='Ground truth')
+    mar = margin*gt
+    plt.fill_between(t, gt-mar, gt+mar, alpha=0.2)
     plt.xlabel('Time [s]')
     plt.ylabel(lab +' along axis ' + a + ' '+u)
     plt.grid(True)
@@ -83,7 +84,7 @@ def plotNorm(t, est, gt):
 
     fig = plt.figure(1)
     plt.plot(t, est, 'r', linewidth=2.0, label='Estimates')
-    plt.plot(t, gt,  'b', linewidth=2.0, label='Ground truth')
+    plt.plot(t, gt,  'b:', linewidth=2.0, label='Ground truth')
     plt.fill_between(t, gt-margin, gt+margin, alpha=0.2)
     plt.xlabel('Time [s]')
     plt.ylabel('Norm of External Force [N]')
@@ -102,13 +103,13 @@ if __name__ == '__main__':
     path_gt_x = args.path_gt_x
     path_gt_y = args.path_gt_y
     path_gt_z = args.path_gt_z
-    observer = args.observer
+    observer = args.observer.lower()
     quantity = args.quantity
     margin = args.margin
     path_saving = args.path_saving
 
     # Data observers
-    observer_lists = ['luenberger', 'kalman_filter', 'stephens']
+    observer_lists = ['luenberger', 'kalman', 'stephens']
     n_obs = [5,5,4]
 
     state_l = ['com_pos', 'com_vel', 'zmp_pos', 'force', 'dforce']
@@ -149,12 +150,12 @@ if __name__ == '__main__':
     if path_estimates_x != None and path_gt_x != None:
 
         figs = []
+        data_est_x = readData(path_estimates_x, n)
+        data_gt_x = readData(path_gt_x, n)
         for i in q:
 
             y_label = y_labels[o][i]
             udm = udms[o][i]
-            data_est_x = readData(path_estimates_x, n)
-            data_gt_x = readData(path_gt_x, n)
             timesteps = np.arange(0, dt*len(data_est_x), dt)
             values_est_x = data_est_x[:,i]
             values_gt_x = data_gt_x[:,i]
@@ -175,12 +176,12 @@ if __name__ == '__main__':
     if path_estimates_y != None and path_gt_y != None:
 
         figs = []
+        data_est_y = readData(path_estimates_y, n)
+        data_gt_y = readData(path_gt_y, n)
         for i in q:
 
             y_label = y_labels[o][i]
             udm = udms[o][i]
-            data_est_y = readData(path_estimates_y, n)
-            data_gt_y = readData(path_gt_y, n)
             timesteps = np.arange(0, dt*len(data_est_y), dt)
             values_est_y = data_est_y[:,i]
             values_gt_y = data_gt_y[:,i]
@@ -201,12 +202,12 @@ if __name__ == '__main__':
     if path_estimates_z != None and path_gt_z != None:
 
         figs = []
+        data_est_z = readData(path_estimates_z, n)
+        data_gt_z = readData(path_gt_z, n)
         for i in q:
 
             y_label = y_labels[o][i]
             udm = udms[o][i]
-            data_est_z = readData(path_estimates_z, n)
-            data_gt_z = readData(path_gt_z, n)
             timesteps = np.arange(0, dt*len(data_est_z), dt)
             values_est_z = data_est_z[:,i]
             values_gt_z = data_gt_z[:,i]
