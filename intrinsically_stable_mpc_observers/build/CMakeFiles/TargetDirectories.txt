@@ -1,3 +1,0 @@
-/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/build/CMakeFiles/rebuild_cache.dir
-/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/build/CMakeFiles/edit_cache.dir
-/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/build/CMakeFiles/osgAtlasSimbicon.dir
