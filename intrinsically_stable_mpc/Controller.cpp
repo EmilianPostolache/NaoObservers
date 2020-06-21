@@ -231,71 +231,16 @@ void Controller::setObservers(double comTargetHeight, Eigen::Vector3d& comInitia
 
 	/* --------------------- Stephens Filter ------------------ */
 
-	// int nSt = 4;          // size vector states
-    // int mSt = 2;          // size vector measurements
-    // int uSt = 1;          // size input vector
-
-    // double posProNoise = exp(-8), velProNoise = exp(-8), outputNoise = exp(-5);
-    // //double posProNoise = exp(-3), velProNoise = exp(-2), outputNoise = exp(-3);
-
-    // // Initialize matrices for observers
-
-    // Eigen::MatrixXd Q(nSt, nSt);
-    // Eigen::MatrixXd R(mSt, mSt);
-
-    // Eigen::MatrixXd A(nSt, nSt);
-    // Eigen::MatrixXd B(nSt, uSt);
-    // Eigen::MatrixXd C(mSt, nSt);
-
-    // // Define matrices for observers
-    // Q <<  posProNoise, 0, 0, 0,
-    //       0, velProNoise, 0, 0,
-    //       0, 0, velProNoise, 0,
-    //       0, 0, 0, velProNoise;
-
-    // R << outputNoise, 0,
-    //      0, outputNoise;
-
-    // A << 1,           dt,             0, 0,
-    //      pow(ni,2)*dt, 1, -pow(ni,2)*dt, dt, 
-    //      0,            0,             1, 0, 
-    //      0,            0,             0, 1;
-        
-    // B << 0, 0, dt, 0;
-
-    // C << 1, 0, 0, 0, 
-    //      0, 0, 1, 0;
-
-
-	// int f = pow(10, 2);
-	// Eigen::MatrixXd P(nSt, nSt);
-    // P = f*P.setIdentity();
-	// Eigen::VectorXd initXSt (nSt);
-	// Eigen::VectorXd initYSt (nSt);
-	// Eigen::VectorXd initZSt (nSt);
-
-	// // Eigen::VectorXd initZ (n);
-    // initXSt << comInitialPosition[0], 0., comInitialPosition[0], 0.;
-    // initYSt << comInitialPosition[1], 0., comInitialPosition[1], 0.;
-	// initZSt << comInitialPosition[2], 0., 0., 0.;
-
-
 	int nSt = 4;          // size vector states
     int mSt = 2;          // size vector measurements
     int uSt = 1;          // size input vector
 
     double posProNoise = exp(-8), 
 	velProNoise = exp(-4);
-	// zmpProNoise = exp(-4), 
-	// forceProNoise = exp(-4);
-
 	double posOutputNoise = exp(-5),
 	zmpOutputNoise = exp(-4);
 
-    //double posProNoise = exp(-3), velProNoise = exp(-2), outputNoise = exp(-3);
-
     // Initialize matrices for observers
-
     Eigen::MatrixXd Q(nSt, nSt);
     Eigen::MatrixXd R(mSt, mSt);
 
@@ -309,9 +254,8 @@ void Controller::setObservers(double comTargetHeight, Eigen::Vector3d& comInitia
           0, 0, velProNoise, 0,
           0, 0, 0, velProNoise;
 
-    R << posOutputNoise, 0,// 0,
-        // 0, posOutputNoise, 0,
-		 0, posOutputNoise; //zmpOutputNoise;
+    R << posOutputNoise, 0,
+		 0, posOutputNoise;
 
     A << 1,           dt,             0, 0, 
          pow(ni,2)*dt, 1, -pow(ni,2)*dt, dt,
@@ -322,7 +266,6 @@ void Controller::setObservers(double comTargetHeight, Eigen::Vector3d& comInitia
     B << 0, 0, dt, 0;
 
     C << 1, 0, 0, 0, 
-        // 0, 1, 0, 0,
 		 0, 0, 1, 0;
 
 
@@ -386,19 +329,18 @@ void Controller::setExternalForcePeriodicFrequency(float k){
 }
 
 Eigen::Vector3d Controller::getExternalForce(){
-	// std::cout << externalForceMode << std::endl;
 	if (mWorld->getSimFrames()>=externalForceStartFrame && mWorld->getSimFrames()<=10000000) {
-		// std::cout << "applying force!" << std::endl;
-		// mTorso->setExtForce(Eigen::Vector3d(10*cos(mWorld->getSimFrames()*0.01),10*sin(mWorld->getSimFrames()*0.01),0.0));  
-		//force = externalForce;
-		// Constant force
-		if (externalForceMode == 0) {
-			return externalForce;
-		}
-		else if (externalForceMode == 1) {
-			return Eigen::Vector3d(externalForce[0]*cos(2*M_PI * externalForcePeriodicFrequency * mWorld->getSimFrames()*0.01 + externalForcePeriodicPhase),
-			                       externalForce[1]*sin(2*M_PI * externalForcePeriodicFrequency * mWorld->getSimFrames()*0.01 + externalForcePeriodicPhase), 0.0);
-		}
+		switch (externalForceMode){
+			case 0:
+				// Constant force
+				return externalForce;
+			case 1:
+				// Periodic force
+				return Eigen::Vector3d(externalForce[0]*cos(2*M_PI * externalForcePeriodicFrequency * mWorld->getSimFrames()*0.01 + externalForcePeriodicPhase),
+									externalForce[1]*sin(2*M_PI * externalForcePeriodicFrequency * mWorld->getSimFrames()*0.01 + externalForcePeriodicPhase), 0.0);
+			default:
+				return Eigen::Vector3d(0.0, 0.0, 0.0);
+      }
 	}
 	return Eigen::Vector3d(0.0, 0.0, 0.0);
 }
@@ -410,8 +352,6 @@ void Controller::update()
     std::uniform_int_distribution<std::mt19937::result_type> dist6(0,15); // distribution in range [1, 6]
 
     // std::cout << "AAA"<<mWorld->getSimFrames() << std::endl;
-        
-
 	Eigen::MatrixXd Y (3, 3); 
 	Eigen::MatrixXd U (3, 1);
 	// std::pair<Eigen::Vector3d, double> wrench = this->getZmpFromWrench();
@@ -456,10 +396,10 @@ void Controller::update()
 	// zmpMeas -= mSupportFoot->getCOM();
 	Y << comCurrentPosition[0], measZmp[0], comCurrentAcceleration[0],
          comCurrentPosition[1], measZmp[1], comCurrentAcceleration[1],
-	 	 comCurrentPosition[2], -(grf[0] + grf[1])*Mc+Mc*g, comCurrentAcceleration[2];
+	 	 comCurrentPosition[2], -(grf[0]+grf[1]), comCurrentAcceleration[2];
 
 	observers->update(U, Y);
-	mTorso->addExtForce(getExternalForce());
+	mTorso->addExtForce(getExternalForce());//, mTorso->getLocalCOM());
 
 	// if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) 
 	// 	mTorso->addExtForce(Eigen::Vector3d(290*cos(2*3.14*((mWorld->getSimFrames())*6.28)/3),290*sin(2*3.14*((mWorld->getSimFrames())*3.14)/0.3),0));  //0.86*sin(2*3.14*(mWorld->getTimeStep())/0.2)*180 magic value!
@@ -523,9 +463,11 @@ void Controller::storeData() {
 	// std::ofstream fout8("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/zmpPositionMeasured.txt", std::ofstream::app);
    	// fout8 << (mSupportFoot->getCOM() + mRobot->getCOM() - mSupportFoot->getCOM()).transpose() - mRobot->getCOMLinearAcceleration().transpose()/(solver->getOmega()*solver->getOmega()) << std::endl;
 
-	//---------------------- luenberger ----------------------
 
 	std::map<std::string, Eigen::VectorXd> states = observers->state();
+	std::map<std::string, Eigen::MatrixXd> uncertainty = observers->uncertainty();
+
+	//---------------------- luenberger ----------------------
 	Eigen::Vector3d force = getExternalForce();
 
 
@@ -579,6 +521,10 @@ void Controller::storeData() {
 		   << force[0] <<  " "
 		   << measZmp[0] << std::endl;
 
+	std::ofstream fout166("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x_un.txt", std::ofstream::app);
+	fout166 << uncertainty["kalman_x"] << std::endl;
+
+
 	std::ofstream fout17("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y.txt", std::ofstream::app);
 	fout17 << states["kalman_y"].transpose() << std::endl;
 	
@@ -588,6 +534,9 @@ void Controller::storeData() {
 		<< mTorso->getCOMLinearAcceleration()[1] << " "
 		<< force[1] <<  " "
 		<< measZmp[1] << std::endl;
+
+	std::ofstream fout188("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y_un.txt", std::ofstream::app);
+	fout188 << uncertainty["kalman_y"] << std::endl;
 
 	std::ofstream fout19("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z.txt", std::ofstream::app);
 
@@ -606,6 +555,9 @@ void Controller::storeData() {
 		<< mTorso->getCOMLinearAcceleration()[2] << " "
 		<< force[2] <<  " "
 		<< -(measGrf[0]+measGrf[1])*Mc+Mc*g << std::endl;
+	
+	std::ofstream fout200("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z_un.txt", std::ofstream::app);
+	fout200 << uncertainty["kalman_z"] << std::endl;
 
 	//---------------------- stephens ----------------------
 
@@ -620,6 +572,9 @@ void Controller::storeData() {
 		   << measZmp[0] <<  " " //- mSupportFoot->getCOM()[0] <<  " "
 		   << force[0] << std::endl;
 
+	std::ofstream fout222("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x_un.txt", std::ofstream::app);
+	fout222 << uncertainty["stephens_x"] << std::endl;
+
 	std::ofstream fout23("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_y.txt", std::ofstream::app);
 	state = states["stephens_y"];
 	state[3] *= Mc;
@@ -630,6 +585,9 @@ void Controller::storeData() {
 	       << mTorso->getCOMLinearVelocity(/*mSupportFoot*/)[1] << " " 
 		   << measZmp[1] <<  " " //- mSupportFoot->getCOM()[1]<<  " "
 		   << force[1] << std::endl;
+
+	std::ofstream fout244("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_y_un.txt", std::ofstream::app);
+	fout244 << uncertainty["stephens_y"] << std::endl;
 
 	// std::ofstream fout25("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_z.txt", std::ofstream::app);
 	// fout25 << states["stephens_z"].transpose() << std::endl;
@@ -999,7 +957,6 @@ std::pair<Eigen::Vector3d, Eigen::Vector2d> Controller::getZmpFromExternalForces
 	Eigen::Vector3d left_cop;
 
 	// std::cout << "impluso L" << left_foot->getConstraintImpulse() << std::endl;
-
 	if(abs(left_foot->getConstraintImpulse()[5])>0.01){
 		left_cop << -(left_foot)->getConstraintImpulse()(1)/(left_foot)->getConstraintImpulse()(5),  (left_foot)->getConstraintImpulse()(0)/(left_foot)->getConstraintImpulse()(5),0.0;
 		Eigen::Matrix3d iRotation = left_foot->getWorldTransform().rotation();
@@ -1010,12 +967,7 @@ std::pair<Eigen::Vector3d, Eigen::Vector2d> Controller::getZmpFromExternalForces
 	dart::dynamics::BodyNode* right_foot = mRobot->getBodyNode("r_sole");
 	Eigen::Vector3d right_cop;
 
-	Eigen::Vector3d right_torque;
-	right_torque = right_foot->getConstraintImpulse().segment(0,3);
-	right_torque = right_foot->getWorldTransform().rotation()*right_torque;
-
 	// std::cout << "impluso R" << right_foot->getConstraintImpulse() << std::endl;
-
 	if(abs(right_foot->getConstraintImpulse()[5])>0.01){
 		right_cop << -(right_foot)->getConstraintImpulse()(1)/(right_foot)->getConstraintImpulse()(5),(right_foot)->getConstraintImpulse()(0)/(right_foot)->getConstraintImpulse()(5),0.0;
 		Eigen::Matrix3d iRotation = right_foot->getWorldTransform().rotation();
