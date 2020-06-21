@@ -83,7 +83,9 @@ public:
   void setExternalForcePeriodicPhase(float);
   void setExternalForcePeriodicFrequency(float);
 
+  Eigen::VectorXd shift(Eigen::VectorXd v);
   Eigen::Vector3d getExternalForce();
+  Eigen::Vector3d getExternalForceDerivative();
 
 private:
   dart::dynamics::SkeletonPtr mRobot;
@@ -100,8 +102,6 @@ private:
 
 	double g = 9.81;	     // gravity
 	double Mc = 35.1954;   // [kg] mass of the robot
-  Eigen::Vector3d lastMeasZmp;
-  Eigen::Vector3d measZmp;
 
   bool supportFoot;
   bool LEFT = false;
@@ -140,6 +140,17 @@ private:
 
   // Observer
   CompositeObserver* observers;
+
+  // ZMP Filter 
+  int FIROrder = 31;   // order of the filter
+  Eigen::Vector3d measZmp;
+  Eigen::Vector3d lastMeasZmp;
+
+	Eigen::VectorXd ZMPPastMeasuresX;
+	Eigen::VectorXd ZMPPastMeasuresY;
+	Eigen::RowVectorXd FIRCoeffs;
+	double ZMPCurrentX, ZMPCurrentY;  //current value of ZMP
+	double ZMPFilteredX, ZMPFilteredY; //filtered value of ZMP tp feed the observer with and to log
 
   // External  force
   int EXTFORCE_CONST = 0;
