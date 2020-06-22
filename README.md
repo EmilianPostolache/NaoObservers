@@ -36,7 +36,8 @@ cd build
 cmake ..
 make
 ```
-4. Use in-app widget to customize the experiments.
+4. Run `./osgAtlasSimbicon` to start the simulation.
+5. Use in-app widget to customize the experiments.
 
 ## Plot Results
 Using `plot.py` it is possible to plot and save the logs produced by `controller.cpp`. To run the script specify the following parameters:
