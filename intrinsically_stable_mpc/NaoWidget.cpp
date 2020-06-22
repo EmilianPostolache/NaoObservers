@@ -27,11 +27,12 @@ NaoWidget::NaoWidget(
     mExternalForceMode(0),
     mGuiExternalForceMode(0),
     mGuiExternalForceStartFrame(250),
-    mGuiExternalForceX(0.0),
-    mGuiExternalForceY(0.0),
+    // TODO: revert back external force to zero as default, and -100, 100 as range, and periodic frequency to 1
+    mGuiExternalForceX(28.0),
+    mGuiExternalForceY(28.0),
     mGuiExternalForceZ(0.0),
     mGuiExternalForcePeriodicPhase(0.0),
-    mGuiExternalForcePeriodicFrequency(1.0),
+    mGuiExternalForcePeriodicFrequency(0.10),
     mGuiComRoll(mNode->getController()->getBalanceFootPos()(0)),
     mGuiComPitch(mNode->getController()->getBalanceFootPos()(1)),
     mGuiComYaw(mNode->getController()->getBalanceFootPos()(2)),
@@ -258,7 +259,7 @@ void NaoWidget::render()
     ImGui::RadioButton("External force mode: Periodic", &mGuiExternalForceMode, 1);
 
     if (mGuiExternalForceMode != mExternalForceMode) {
-      switch (mGuiBeheavior) {
+      switch (mGuiExternalForceMode) {
         case 0:
           mNode->getController()->setExternalForceConstant();
           break;
@@ -283,19 +284,19 @@ void NaoWidget::render()
     ImGui::Spacing();
 
     // External force x
-    ImGui::SliderFloat("ext force x", &mGuiExternalForceX, 0.0, 200.0, "%.2f");
+    ImGui::SliderFloat("ext force x", &mGuiExternalForceX, 0.0, 50.0, "%.2f");
     setExternalForceX(mGuiExternalForceX);
     
     ImGui::Spacing();
 
     // External force y
-    ImGui::SliderFloat("ext force y", &mGuiExternalForceY, 0.0, 200.0, "%.2f");
+    ImGui::SliderFloat("ext force y", &mGuiExternalForceY, 0.0, 50.0, "%.2f");
     setExternalForceY(mGuiExternalForceY);
     
     ImGui::Spacing();
 
     // External force z
-    ImGui::SliderFloat("ext force z", &mGuiExternalForceZ, 0.0, 200.0, "%.2f");
+    ImGui::SliderFloat("ext force z", &mGuiExternalForceZ, 0.0, 50.0, "%.2f");
     setExternalForceZ(mGuiExternalForceZ);
 
     ImGui::Spacing();

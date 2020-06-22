@@ -115,7 +115,8 @@ void KalmanComposite::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y)
     double zcHat = kalmanZ->state()["kalman_z"](0);   // estimate of z CoM
     double ddzcHat = kalmanZ->state()["kalman_z"](2); // estimate of acceleration z CoM
     double fzHat = kalmanZ->state()["kalman_z"](3);   // estimate of external force z axis
-    double grfHat = -Mc*g -Mc*ddzcHat + fzHat;
+    double grfHat = -Mc*g - Mc*ddzcHat + fzHat;
+    //double grfHat = Y.row(2)[1];
 
     Eigen::MatrixXd Cx(kalmanZ->getm(), kalmanZ->getn());
     Cx << 1, 0, 0, 0, 0,
@@ -165,7 +166,7 @@ KalmanFilter::KalmanFilter(const Eigen::MatrixXd& A,
                             std::string name, int axis):LeafObserver(name, axis){
 
     Eigen::Matrix2d cov_input;
-    cov_input << sigma_jerk, 0, sigma_ddfext, 0;
+    cov_input << sigma_jerk, 0, 0, sigma_ddfext;
     Q = B*cov_input*B.transpose();                  // compute covariance process noise
     this->A = A;
     this->C = C;

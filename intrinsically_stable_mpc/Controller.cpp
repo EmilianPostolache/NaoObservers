@@ -143,11 +143,17 @@ void Controller::setObservers(double comTargetHeight, Eigen::Vector3d& comInitia
 	// 		241151.90, -1941421.30,
 	// 		2304743.72, -24002899.99;
 
-	GLun << 330.00, 0.00,
-			40804.70, -29.70,
-			-0.00, 70.00,
-			2235750.00, 1.00,
-			45900000.14, 70.00;
+	//GLun << 330.00, 0.00,
+	//			40804.70, -29.70,
+	//		-0.00, 70.00,
+	//		2235750.00, 1.00,
+	//		45900000.14, 70.00;
+
+	GLun << 240.00,          0.00,
+      21254.70,        -29.49,
+          0.00,         70.00,
+     820250.00,         12.36,
+   11700000.00,        236.15;
 
 
     LuenbergerObserver *xLunObs = new LuenbergerObserver(ALun, BLun, CLun, GLun, "luenberger_x", 0);
@@ -217,10 +223,9 @@ void Controller::setObservers(double comTargetHeight, Eigen::Vector3d& comInitia
 		   0, dt;
 
     CzKal << 1, 0, 0, 0, 0, 
-            0, 0, 1, 0, 0, 
-            0, 0, -Mc, 1, 0;
+             0, 0, 1, 0, 0, 
+             0, 0, -Mc, 1, 0;
 
-	// dargli delle inizializzazioni
 	KalmanFilter* zKalObs = new KalmanFilter(AKal, BKal, CzKal, RzKal, sigmaQJerk,
 	                      sigmaQDdfext, "kalman_z", 2);  // z-axis Observer
 	zKalObs->init();
@@ -245,10 +250,9 @@ void Controller::setObservers(double comTargetHeight, Eigen::Vector3d& comInitia
     int mSt = 2;          // size vector measurements
     int uSt = 1;          // size input vector
 
-    double posProNoise = exp(-8), 
-	velProNoise = exp(-4);
-	double posOutputNoise = exp(-5),
-	zmpOutputNoise = exp(-4);
+    double posProNoise = exp(-8), velProNoise = exp(-4);
+	double forceProNoise = exp(-1);
+	double posOutputNoise = exp(-5), zmpOutputNoise = exp(-5);
 
     // Initialize matrices for observers
     Eigen::MatrixXd Q(nSt, nSt);
@@ -262,10 +266,10 @@ void Controller::setObservers(double comTargetHeight, Eigen::Vector3d& comInitia
     Q <<  posProNoise, 0, 0, 0,
 		  0, velProNoise, 0, 0,
           0, 0, velProNoise, 0,
-          0, 0, 0, velProNoise;
+          0, 0, 0, forceProNoise;
 
     R << posOutputNoise, 0,
-		 0, posOutputNoise;
+		 0, zmpOutputNoise;
 
     A << 1,           dt,             0, 0, 
          pow(ni,2)*dt, 1, -pow(ni,2)*dt, dt,
