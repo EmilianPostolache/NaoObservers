@@ -26,7 +26,7 @@ Contents:
 
 ## Execution
 1. Install DART following https://dartsim.github.io/install_dart_on_ubuntu.html
-2. Go into intrinsically_stable_mpc and create a build directory:
+2. Go to `intrinsically_stable_mpc` and create a build directory:
 ```
 mkdir build
 cd build
