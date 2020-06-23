@@ -96,6 +96,8 @@ public:
   Eigen::Vector3d getExternalForce();
   Eigen::Vector3d getExternalForceDerivative();
 
+  std::string getLogPath();
+
 private:
   dart::dynamics::SkeletonPtr mRobot;
 
@@ -175,6 +177,7 @@ private:
   float externalForcePeriodicPhase = 0.0;
   float externalForcePeriodicFrequency = 1.0;
   int externalForceStartFrame = 250;
+  double externalForceXOffset = 26.0;
 
   // Log path
   std::string logPath = "/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/";

@@ -82,17 +82,6 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 	// Observers
 	observers = new CompositeObserver("observers");
 
-	// Clear data
-	std::string clearComm = "rm -r \"";
-	clearComm.append(logPath);
-	clearComm.append("\"");
-	system(clearComm.c_str());
-
-	// Make data dir
-	std::string makeComm = "mkdir \"";
-	makeComm.append(logPath);
-	makeComm.append("\"");
-	system(makeComm.c_str());
 }
 
 Controller::~Controller()
@@ -130,6 +119,10 @@ void Controller::setExternalForcePeriodicPhase(float phi){
 
 void Controller::setExternalForcePeriodicFrequency(float k){
 	externalForcePeriodicFrequency = k;
+}
+
+std::string Controller::getLogPath(){
+	return logPath;
 }
 
 Eigen::Vector3d Controller::getExternalForce(){
@@ -291,6 +284,7 @@ void Controller::storeData() {
 		std::ofstream fout9("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_x.txt", std::ofstream::app);
 		Eigen::VectorXd state = states["luenberger_x"];
 		state[3] *= Mc;
+		state[3] -= externalForceXOffset;
 		fout9 << state.transpose() << std::endl;
 
 		std::ofstream fout10("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_x_gt.txt", std::ofstream::app);
@@ -330,7 +324,9 @@ void Controller::storeData() {
 	if (observers->getChild("kalman") != 0){ 
 		//---------------------- kalman x ----------------------
 		std::ofstream fout15("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x.txt", std::ofstream::app);
-		fout15 << states["kalman_x"].transpose() << std::endl;
+		Eigen::VectorXd state = states["kalman_x"];
+		state[3] -= externalForceXOffset;
+		fout15 << state.transpose() << std::endl;
 
 		std::ofstream fout16("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x_gt.txt", std::ofstream::app);
 		fout16 << mTorso->getCOM()[0] << " " //- mSupportFoot->getCOM()[0] << " "
@@ -385,6 +381,7 @@ void Controller::storeData() {
 		std::ofstream fout21("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x.txt", std::ofstream::app);
 		Eigen::VectorXd state = states["stephens_x"];
 		state[3] *= Mc;
+		state[3] -= externalForceXOffset; // X-OFFSET
 		fout21 << state.transpose() << std::endl;
 
 		std::ofstream fout22("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x_gt.txt", std::ofstream::app);

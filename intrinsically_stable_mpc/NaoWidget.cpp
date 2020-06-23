@@ -386,6 +386,24 @@ void NaoWidget::render()
     ImGui::SliderInt("obs delay", &mGuiObserverDelay, 0, 200);
     mNode->getController()->setObserverDelay(mGuiObserverDelay);
 
+    ImGui::Spacing();
+
+    if (ImGui::Button("Clear logs")){
+        if (mWorld->getSimFrames()==0){
+            // Clear data
+        std::string clearComm = "rm -r \"";
+        clearComm.append(mNode->getController()->getLogPath());
+        clearComm.append("\"");
+        system(clearComm.c_str());
+
+        // Make data dir
+        std::string makeComm = "mkdir \"";
+        makeComm.append(mNode->getController()->getLogPath());
+        makeComm.append("\"");
+        system(makeComm.c_str());
+      } 
+    }
+    
 
     // // ImGui::Spacing();
     // // // Reference Velocity Omega
