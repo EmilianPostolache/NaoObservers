@@ -31,8 +31,15 @@ NaoWidget::NaoWidget(
     mGuiExternalForceX(28.0),
     mGuiExternalForceY(28.0),
     mGuiExternalForceZ(0.0),
+    mGuiObserverDelay(0),
     mGuiExternalForcePeriodicPhase(0.0),
     mGuiExternalForcePeriodicFrequency(0.10),
+    mGuiUseLuenbergerObserver(true),
+    mGuiUseKalmanObserver(true),
+    mGuiUseStephensObserver(true),
+    mUseLuenbergerObserver(true),
+    mUseKalmanObserver(true),
+    mUseStephensObserver(true),
     mGuiComRoll(mNode->getController()->getBalanceFootPos()(0)),
     mGuiComPitch(mNode->getController()->getBalanceFootPos()(1)),
     mGuiComYaw(mNode->getController()->getBalanceFootPos()(2)),
@@ -40,7 +47,9 @@ NaoWidget::NaoWidget(
     mGuiComY(mNode->getController()->getBalanceFootPos()(4)),
     mGuiComZ(mNode->getController()->getBalanceFootPos()(5))
 {
-  // Do nothing
+  mNode->getController()->addLuenbergerObserver();
+  mNode->getController()->addStephensObserver();
+  mNode->getController()->addKalmanObserver();
 }
 
 //==============================================================================
@@ -254,7 +263,7 @@ void NaoWidget::render()
   // -------------------------- External Forces ---------------------
 
   if (ImGui::CollapsingHeader("External Forces Options", ImGuiTreeNodeFlags_DefaultOpen)) {
-    // Balance Point
+    // External force mode
     ImGui::RadioButton("External force mode: Constant", &mGuiExternalForceMode, 0);
     ImGui::RadioButton("External force mode: Periodic", &mGuiExternalForceMode, 1);
 
@@ -315,6 +324,116 @@ void NaoWidget::render()
 
     ImGui::Spacing();
   }
+
+  if (ImGui::CollapsingHeader("Observers Options", ImGuiTreeNodeFlags_DefaultOpen)) {
+    // // Balance Point
+    // ImGui::RadioButton("External force mode: Constant", &mGuiExternalForceMode, 0);
+    // ImGui::RadioButton("External force mode: Periodic", &mGuiExternalForceMode, 1);
+
+    ImGui::Checkbox("Luenberger", &mGuiUseLuenbergerObserver);
+    ImGui::Checkbox("Kalman", &mGuiUseKalmanObserver);
+    ImGui::Checkbox("Stephens", &mGuiUseStephensObserver);
+
+    if (mGuiUseLuenbergerObserver != mUseLuenbergerObserver) {
+      if (mWorld->getSimFrames()>=1){
+        mGuiUseLuenbergerObserver = mUseLuenbergerObserver;
+      }
+      else {
+        if (mGuiUseLuenbergerObserver) {
+          mNode->getController()->addLuenbergerObserver();
+        }
+        else {
+          mNode->getController()->removeLuenbergerObserver();
+        }
+        mUseLuenbergerObserver = mGuiUseLuenbergerObserver;
+      }
+    }
+
+    if (mGuiUseKalmanObserver != mUseKalmanObserver) {
+      if (mWorld->getSimFrames()>=1){
+        mGuiUseKalmanObserver = mUseKalmanObserver;
+      }
+      else {
+        if (mGuiUseKalmanObserver) {
+          mNode->getController()->addKalmanObserver();
+        }
+        else {
+          mNode->getController()->removeKalmanObserver();
+        }
+        mUseKalmanObserver = mGuiUseKalmanObserver;
+      }
+    }
+
+
+    if (mGuiUseStephensObserver != mUseStephensObserver) {
+      if (mWorld->getSimFrames()>=1){
+        mGuiUseStephensObserver = mUseStephensObserver;
+      } 
+      else {
+        if (mGuiUseStephensObserver) {
+          mNode->getController()->addStephensObserver();
+        }
+        else {
+          mNode->getController()->removeStephensObserver();
+        }
+        mUseStephensObserver = mGuiUseStephensObserver;
+      }
+    }
+
+    ImGui::Spacing();
+
+    // External force start frame
+    ImGui::SliderInt("obs delay", &mGuiObserverDelay, 0, 200);
+    mNode->getController()->setObserverDelay(mGuiObserverDelay);
+
+
+    // // ImGui::Spacing();
+    // // // Reference Velocity Omega
+    // // ImGui::SliderInt("start frame", &mGuiExternalForceStartFrame, 0, 1000, "%d");
+    // // setExternalForceStartFrame(mGuiExternalForceStartFrame);
+
+    // ImGui::Spacing();
+
+    // // External force start frame
+    // ImGui::SliderInt("start frame", &mGuiExternalForceStartFrame, 0, 1000);
+    // setExternalForceStartFrame(mGuiExternalForceStartFrame);
+    
+    // ImGui::Spacing();
+
+    // // External force x
+    // ImGui::SliderFloat("ext force x", &mGuiExternalForceX, 0.0, 50.0, "%.2f");
+    // setExternalForceX(mGuiExternalForceX);
+    
+    // ImGui::Spacing();
+
+    // // External force y
+    // ImGui::SliderFloat("ext force y", &mGuiExternalForceY, 0.0, 50.0, "%.2f");
+    // setExternalForceY(mGuiExternalForceY);
+    
+    // ImGui::Spacing();
+
+    // // External force z
+    // ImGui::SliderFloat("ext force z", &mGuiExternalForceZ, 0.0, 50.0, "%.2f");
+    // setExternalForceZ(mGuiExternalForceZ);
+
+    // ImGui::Spacing();
+
+    // // Periodic phase
+    // ImGui::SliderFloat("extf periodic phase", &mGuiExternalForcePeriodicPhase,
+    //  0.0, 10.0, "%.2f");
+    // setExternalForcePeriodicPhase(mGuiExternalForcePeriodicPhase);
+
+    // ImGui::Spacing();
+
+    // // Periodic frequency
+    // ImGui::SliderFloat("extf periodic freq", &mGuiExternalForcePeriodicFrequency,
+    //  0.0, 1.0, "%.2f");
+    // setExternalForcePeriodicFrequency(mGuiExternalForcePeriodicFrequency);
+
+    // ImGui::Spacing();
+  }
+  
+
 
   ImGui::End();
 }

@@ -81,6 +81,16 @@ protected:
 
   float mGuiExternalForcePeriodicFrequency;
   float mGuiExternalForcePeriodicPhase;
+
+  // Observers 
+  bool mGuiUseLuenbergerObserver;
+  bool mGuiUseKalmanObserver;
+  bool mGuiUseStephensObserver;
+  bool mUseLuenbergerObserver;
+  bool mUseKalmanObserver;
+  bool mUseStephensObserver;
+
+  int mGuiObserverDelay;
 };
 
 #endif // DART_EXAMPLE_OSG_OSGATLASSIMBICON_ATLASSIMBICONWIDGET_HPP_

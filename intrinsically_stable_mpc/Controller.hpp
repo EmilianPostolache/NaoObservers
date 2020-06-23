@@ -83,6 +83,15 @@ public:
   void setExternalForcePeriodicPhase(float);
   void setExternalForcePeriodicFrequency(float);
 
+  // Observers
+  void addLuenbergerObserver();
+  void addKalmanObserver();
+  void addStephensObserver();
+  void removeLuenbergerObserver();
+  void removeKalmanObserver();
+  void removeStephensObserver();
+  void setObserverDelay(int);
+
   Eigen::VectorXd shift(Eigen::VectorXd v);
   Eigen::Vector3d getExternalForce();
   Eigen::Vector3d getExternalForceDerivative();
@@ -102,6 +111,10 @@ private:
 
 	double g = 9.81;	     // gravity
 	double Mc = 35.1954;   // [kg] mass of the robot
+  double comTargetHeight = 0.33; //0.33;
+  double ni = sqrt(g/comTargetHeight);
+  double dt = 1.0 / 100.0;
+  Eigen::Vector3d comInitialPosition;
 
   bool supportFoot;
   bool LEFT = false;
@@ -140,6 +153,7 @@ private:
 
   // Observer
   CompositeObserver* observers;
+  int obsDelay;
 
   // ZMP Filter 
   int FIROrder = 31;   // order of the filter
@@ -161,4 +175,7 @@ private:
   float externalForcePeriodicPhase = 0.0;
   float externalForcePeriodicFrequency = 1.0;
   int externalForceStartFrame = 250;
+
+  // Log path
+  std::string logPath = "/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/";
 };

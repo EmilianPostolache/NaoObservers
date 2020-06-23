@@ -49,7 +49,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 
 	indInitial = mWorld->getSimFrames() + (int)((singleSupportDuration + doubleSupportDuration)/mWorld->getTimeStep());
 
-	Eigen::Vector3d comInitialPosition;
+	// Eigen::Vector3d comInitialPosition;
 	if (balancePoint == TORSO) {
 		comInitialPosition = mBase->getCOM(mSupportFoot);
 	} else {
@@ -57,8 +57,6 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 	}
 	lastMeasZmp << mTorso->getCOM()[0], mTorso->getCOM()[1], 0.0;
 	measZmp = lastMeasZmp;
-
-	double comTargetHeight = 0.33;//0.33;
 
 	solver = new mpcSolver::MPCSolver(0.05, mWorld->getTimeStep(), 1.0, comInitialPosition, comTargetHeight, singleSupportDuration, doubleSupportDuration, 0.30,
 			0.05, 0.2, 0.1, 0.15, 0.1, 0.0); //0.05, 0.2, 0.1, 0.15, 0.1, 0.0   0.05, 0.3, 0.13, 0.17, 0.1, 0.0
@@ -82,232 +80,24 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 	FIRCoeffs << 0.00272675, 0.00339661, 0.00494293, 0.00750462, 0.01114677, 0.01584926, 0.02150235, 0.02790962, 0.0347986, 0.04183807, 0.04866094, 0.0548908, 0.06016997, 0.06418667, 0.06669905, 0.06755398, 0.06669905, 0.06418667, 0.06016997, 0.0548908, 0.04866094, 0.04183807, 0.0347986, 0.02790962, 0.02150235, 0.01584926, 0.01114677, 0.00750462, 0.00494293, 0.00339661, 0.00272675; //obtained using python&matlab (DO NOT CHANGE)
 
 	// Observers
-	setObservers(comTargetHeight, comInitialPosition, 1.0/100.0);
+	observers = new CompositeObserver("observers");
+
+	// Clear data
+	std::string clearComm = "rm -r \"";
+	clearComm.append(logPath);
+	clearComm.append("\"");
+	system(clearComm.c_str());
+
+	// Make data dir
+	std::string makeComm = "mkdir \"";
+	makeComm.append(logPath);
+	makeComm.append("\"");
+	system(makeComm.c_str());
 }
 
 Controller::~Controller()
 {
 	delete observers;
-}
-
-void Controller::setObservers(double comTargetHeight, Eigen::Vector3d& comInitialPosition, double dt){
-	
-	// ------------------------- Observers --------------------------
-
-	observers = new CompositeObserver("observers");
-    double ni = sqrt(g/comTargetHeight);
-
-	//------------------------ Luenberger Observer ------------------------
-
-	int nLun = 5;
-    int mLun = 2;
-
-    Eigen::MatrixXd ALun(nLun, nLun);
-    Eigen::MatrixXd BLun(nLun, 1);
-    Eigen::MatrixXd CLun(mLun, nLun);
-    Eigen::MatrixXd GLun(nLun, mLun);
-
-
-    // ALun << 1, dt, 0, 0, 0, 
-    //         pow(ni,2)*dt, 1, -pow(ni,2)*dt, dt, 0,
-    //         0, 0, 1, 0, 0,
-    //         0, 0, 0, 1, dt,
-    //         0, 0, 0, 0, 1;
-
-    // BLun << 0, 0, dt, 0, 0;
-
-    // CLun << 1, 0, 0, 0, 0,
-    //         0, 0, 1, 0, 0;
-
-    // GLun << -2.2528, -2.5477,
-	// 		31.4317, -25.7226,
-	// 	    -0.0001, -0.7972,
-	// 	    -0.4593, -1.6285,
-	// 		 0.0190, 0.0722;
-
-	ALun << 0, 1, 0, 0, 0,
-	        pow(ni,2), 0, -pow(ni,2), 1, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 1,
-			0, 0, 0, 0, 0;
-
-	BLun << 0, 0, 1, 0, 0;
-
-	CLun << 1, 0, 0, 0, 0,
-	        0, 0, 1, 0, 0;
-
-
-    // GLun << 158.82, -444.63,
-	// 		9371.79, -51423.15,
-	// 		-0.02, 41.18,
-	// 		241151.90, -1941421.30,
-	// 		2304743.72, -24002899.99;
-
-	//GLun << 330.00, 0.00,
-	//			40804.70, -29.70,
-	//		-0.00, 70.00,
-	//		2235750.00, 1.00,
-	//		45900000.14, 70.00;
-
-	GLun << 240.00,          0.00,
-      21254.70,        -29.49,
-          0.00,         70.00,
-     820250.00,         12.36,
-   11700000.00,        236.15;
-
-
-    LuenbergerObserver *xLunObs = new LuenbergerObserver(ALun, BLun, CLun, GLun, "luenberger_x", 0);
-    LuenbergerObserver *yLunObs = new LuenbergerObserver(ALun, BLun, CLun, GLun, "luenberger_y", 1);
-	LuenbergerObserver *zLunObs = new LuenbergerObserver(ALun, BLun, CLun, GLun, "luenberger_z", 2);
-
-    observers->add(xLunObs);
-    observers->add(yLunObs);
-	observers->add(zLunObs);
-	// observers.add(lzObs);
-
-    Eigen::VectorXd initXLun (nLun);
-	Eigen::VectorXd initYLun (nLun);
-	Eigen::VectorXd initZLun (nLun);
-
-	// Eigen::VectorXd initZ (n);
-    initXLun << comInitialPosition[0], 0., comInitialPosition[0], 0., 0.;
-    initYLun << comInitialPosition[1], 0., comInitialPosition[1], 0., 0.;
-	initZLun << comInitialPosition[2], 0., 0., 0., 0.;
-	
-	xLunObs -> init(initXLun);
- 	yLunObs -> init(initYLun);
-	zLunObs -> init(initZLun);
-
-	//------------------------ Kalman Observer ------------------------
-
-	int uKal = 2;          // size input vector
-	int nKal = 5;          // size vector states
-	int mKal = 3;          // size vector measurements
-
-	double sigmaQJerk = pow(10.0, 3.0);
-	double sigmaQDdfext = pow(10.0, 3.0);
-
-	double zcHat, ddzcHat, fzHat, grfHat;
-	double fxHat, fyHat, ts;
-
-	// Initialize matrices for observers
-
-	Eigen::MatrixXd RzKal(mKal, mKal);
-	Eigen::MatrixXd RxKal(mKal, mKal);
-	Eigen::MatrixXd RyKal(mKal, mKal);
-
-	Eigen::MatrixXd AKal(nKal, nKal);
-	Eigen::MatrixXd BKal(nKal, uKal);
-	Eigen::MatrixXd CzKal(mKal, nKal);
-
-	// Define matrices for observers
-
-	RzKal << 0.01, 0, 0, 
-	          0, 1, 0,
-			  0, 0, 1;
-	RxKal << 0.01, 0, 0,
-	          0, 1, 0,
-			  0, 0, 0.01;
-	RyKal = RxKal;
-
-	AKal << 1, dt, pow(dt, 2.0)/2, 0, 0,
-            0, 1, dt, 0, 0, 
-            0, 0, 1, 0, 0, 
-            0, 0, 0, 1, dt, 
-            0, 0, 0, 0, 1;
-            
-    BKal << pow(dt, 3.0)/6, 0,
-		   pow(dt, 2.0)/2, 0,
-		   dt, 0, 
-		   0, pow(dt, 2.0)/2,
-		   0, dt;
-
-    CzKal << 1, 0, 0, 0, 0, 
-             0, 0, 1, 0, 0, 
-             0, 0, -Mc, 1, 0;
-
-	KalmanFilter* zKalObs = new KalmanFilter(AKal, BKal, CzKal, RzKal, sigmaQJerk,
-	                      sigmaQDdfext, "kalman_z", 2);  // z-axis Observer
-	zKalObs->init();
-
-	KalmanFilter* xKalObs = new KalmanFilter(AKal, BKal, CzKal, RxKal, sigmaQJerk,
-	                     sigmaQDdfext, "kalman_x", 0);  // x-axis Observer
-	xKalObs->init();
-
-	KalmanFilter* yKalObs = new KalmanFilter(AKal, BKal, CzKal, RyKal, sigmaQJerk,
-	                     sigmaQDdfext, "kalman_y", 1);  // z-axis Observer
-	yKalObs->init();
-	KalmanComposite* kalObs = new KalmanComposite(g, Mc);
-	kalObs->addKalmanX(xKalObs);
-	kalObs->addKalmanY(yKalObs);
-	kalObs->addKalmanZ(zKalObs);
-
-	observers->add(kalObs);
-
-	/* --------------------- Stephens Filter ------------------ */
-
-	int nSt = 4;          // size vector states
-    int mSt = 2;          // size vector measurements
-    int uSt = 1;          // size input vector
-
-    double posProNoise = exp(-8), velProNoise = exp(-4);
-	double forceProNoise = exp(-1);
-	double posOutputNoise = exp(-5), zmpOutputNoise = exp(-5);
-
-    // Initialize matrices for observers
-    Eigen::MatrixXd Q(nSt, nSt);
-    Eigen::MatrixXd R(mSt, mSt);
-
-    Eigen::MatrixXd A(nSt, nSt);
-    Eigen::MatrixXd B(nSt, uSt);
-    Eigen::MatrixXd C(mSt, nSt);
-
-    // Define matrices for observers
-    Q <<  posProNoise, 0, 0, 0,
-		  0, velProNoise, 0, 0,
-          0, 0, velProNoise, 0,
-          0, 0, 0, forceProNoise;
-
-    R << posOutputNoise, 0,
-		 0, zmpOutputNoise;
-
-    A << 1,           dt,             0, 0, 
-         pow(ni,2)*dt, 1, -pow(ni,2)*dt, dt,
-		 0,            0,             1, 0, 
-         0,            0,             0, 1;
-
-        
-    B << 0, 0, dt, 0;
-
-    C << 1, 0, 0, 0, 
-		 0, 0, 1, 0;
-
-
-	int f = pow(10, 2);
-	Eigen::MatrixXd P(nSt, nSt);
-    P = f*P.setIdentity();
-	Eigen::VectorXd initXSt (nSt);
-	Eigen::VectorXd initYSt (nSt);
-	Eigen::VectorXd initZSt (nSt);
-
-	// Eigen::VectorXd initZ (n);
-    initXSt << comInitialPosition[0], 0., comInitialPosition[0], 0.;
-    initYSt << comInitialPosition[1], 0., comInitialPosition[1], 0.;
-	initZSt << comInitialPosition[2], 0., 0., 0.;
-
-	// ---------- rest 
-
-    // Initialization Observers and vector of measurements
-    StephensFilter *xStObs = new StephensFilter(A, B, C, Q, R, "stephens_x", 0); 
-    xStObs->init(initXSt, P);
-	StephensFilter *yStObs = new StephensFilter(A, B, C, Q, R, "stephens_y", 1);  
-    yStObs->init(initYSt, P);
-  	StephensFilter *zStObs = new StephensFilter(A, B, C, Q, R, "stephens_z", 2);  
-    zStObs->init(initZSt, P);
-
-	observers->add(xStObs);
-	observers->add(yStObs);
-	observers->add(zStObs);
 }
 
 void Controller::setExternalForceConstant(){
@@ -421,7 +211,9 @@ void Controller::update()
          comCurrentPosition[1], ZMPFilteredY, comCurrentAcceleration[1],
 	 	 comCurrentPosition[2], -(grf[0]+grf[1]), comCurrentAcceleration[2];
 
-	observers->update(U, Y);
+	if (mWorld->getSimFrames()>=obsDelay && mWorld->getSimFrames()<=10000000){
+		observers->update(U, Y);
+	}
 	mTorso->addExtForce(getExternalForce());//, mTorso->getLocalCOM());
 
 	// if (mWorld->getSimFrames()>=250 && mWorld->getSimFrames()<=10000000) 
@@ -493,34 +285,35 @@ void Controller::storeData() {
 	Eigen::Vector3d forceDerivative = getExternalForceDerivative();
 	// std::cout << forceDerivative << std::endl;
 
-	//---------------------- luenberger x ----------------------
+	// ---------------------- luenberger -----------------
+	if (observers->getChild("luenberger") != 0){ 
+		//---------------------- luenberger x ----------------------
+		std::ofstream fout9("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_x.txt", std::ofstream::app);
+		Eigen::VectorXd state = states["luenberger_x"];
+		state[3] *= Mc;
+		fout9 << state.transpose() << std::endl;
 
-	std::ofstream fout9("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_x.txt", std::ofstream::app);
-	Eigen::VectorXd state = states["luenberger_x"];
-	state[3] *= Mc;
-	fout9 << state.transpose() << std::endl;
+		std::ofstream fout10("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_x_gt.txt", std::ofstream::app);
+		fout10 << mTorso->getCOM()[0] << " " //- mSupportFoot->getCOM()[0] << " "
+			<< mTorso->getCOMLinearVelocity()[0] << " " 
+			<< ZMPFilteredX <<  " "
+			<< force[0] <<  " "
+			<< forceDerivative[0] <<std::endl;
 
-	std::ofstream fout10("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_x_gt.txt", std::ofstream::app);
-	fout10 << mTorso->getCOM()[0] << " " //- mSupportFoot->getCOM()[0] << " "
-	       << mTorso->getCOMLinearVelocity()[0] << " " 
-		   << ZMPFilteredX <<  " "
-		   << force[0] <<  " "
-		   << forceDerivative[0] <<std::endl;
+		//---------------------- luenberger y ----------------------
 
-	//---------------------- luenberger y ----------------------
+		std::ofstream fout11("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_y.txt", std::ofstream::app);
+		state = states["luenberger_y"];
+		state[3] *= Mc;
+		fout11 << state.transpose() << std::endl;
 
-	std::ofstream fout11("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_y.txt", std::ofstream::app);
-	state = states["luenberger_y"];
-	state[3] *= Mc;
-	fout11 << state.transpose() << std::endl;
-
-	std::ofstream fout12("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_y_gt.txt", std::ofstream::app);
-	fout12 << mTorso->getCOM()[1] << " " // - mSupportFoot->getCOM()[1] 
-	       << mTorso->getCOMLinearVelocity()[1] << " " 
-		   << ZMPFilteredY <<  " "
-		   << force[1] <<  " "
-		   << forceDerivative[1] <<std::endl;
-
+		std::ofstream fout12("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_y_gt.txt", std::ofstream::app);
+		fout12 << mTorso->getCOM()[1] << " " // - mSupportFoot->getCOM()[1] 
+			<< mTorso->getCOMLinearVelocity()[1] << " " 
+			<< ZMPFilteredY <<  " "
+			<< force[1] <<  " "
+			<< forceDerivative[1] <<std::endl;
+	}
 
 	// std::ofstream fout13("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_z.txt", std::ofstream::app);
 	// fout13 << states["luenberger_z"].transpose() << std::endl;
@@ -532,99 +325,93 @@ void Controller::storeData() {
 	// 	   << force[2] <<  " "
 	// 	   << 0.0 <<std::endl;
 
-	//---------------------- kalman x ----------------------
 
-	//TODO: non scordarci di aggiungere le derivate corrette della forza misurate
+	// ---------------------- kalman -----------------
+	if (observers->getChild("kalman") != 0){ 
+		//---------------------- kalman x ----------------------
+		std::ofstream fout15("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x.txt", std::ofstream::app);
+		fout15 << states["kalman_x"].transpose() << std::endl;
 
-	std::ofstream fout15("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x.txt", std::ofstream::app);
-	fout15 << states["kalman_x"].transpose() << std::endl;
+		std::ofstream fout16("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x_gt.txt", std::ofstream::app);
+		fout16 << mTorso->getCOM()[0] << " " //- mSupportFoot->getCOM()[0] << " "
+			<< mTorso->getCOMLinearVelocity()[0] << " " 
+			<< mTorso->getCOMLinearAcceleration()[0] << " "
+			<< force[0] <<  " "
+			<< forceDerivative[0] << std::endl;
 
-	std::ofstream fout16("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x_gt.txt", std::ofstream::app);
-	fout16 << mTorso->getCOM()[0] << " " //- mSupportFoot->getCOM()[0] << " "
-	       << mTorso->getCOMLinearVelocity()[0] << " " 
-		   << mTorso->getCOMLinearAcceleration()[0] << " "
-		   << force[0] <<  " "
-		   << forceDerivative[0] << std::endl;
+		std::ofstream fout166("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x_un.txt", std::ofstream::app);
+		fout166 << uncertainty["kalman_x"] << std::endl;
 
-	std::ofstream fout166("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x_un.txt", std::ofstream::app);
-	fout166 << uncertainty["kalman_x"] << std::endl;
 
-	//---------------------- kalman y ----------------------
+		//---------------------- kalman y ----------------------
 
-	std::ofstream fout17("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y.txt", std::ofstream::app);
-	fout17 << states["kalman_y"].transpose() << std::endl;
-	
-	std::ofstream fout18("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y_gt.txt", std::ofstream::app);
-	fout18 << mTorso->getCOM()[1] << " " // - mSupportFoot->getCOM()[1] << " "
-		<< mTorso->getCOMLinearVelocity()[1] << " " 
-		<< mTorso->getCOMLinearAcceleration()[1] << " "
-		<< force[1] <<  " "
-		<< forceDerivative[1] << std::endl;
+		std::ofstream fout17("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y.txt", std::ofstream::app);
+		fout17 << states["kalman_y"].transpose() << std::endl;
+		
+		std::ofstream fout18("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y_gt.txt", std::ofstream::app);
+		fout18 << mTorso->getCOM()[1] << " " // - mSupportFoot->getCOM()[1] << " "
+			<< mTorso->getCOMLinearVelocity()[1] << " " 
+			<< mTorso->getCOMLinearAcceleration()[1] << " "
+			<< force[1] <<  " "
+			<< forceDerivative[1] << std::endl;
 
-	std::ofstream fout188("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y_un.txt", std::ofstream::app);
-	fout188 << uncertainty["kalman_y"] << std::endl;
+		std::ofstream fout188("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y_un.txt", std::ofstream::app);
+		fout188 << uncertainty["kalman_y"] << std::endl;
 
-	//---------------------- kalman z ----------------------
+		//---------------------- kalman z ----------------------
 
-	std::ofstream fout19("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z.txt", std::ofstream::app);
+		std::ofstream fout19("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z.txt", std::ofstream::app);
 
-	Eigen::VectorXd stateKalmanZ = states["kalman_z"];
-	//stateKalmanZ[4] = -Mc*g - Mc * stateKalmanZ[2] + stateKalmanZ[3];
-	fout19 << stateKalmanZ.transpose() << std::endl;
+		Eigen::VectorXd stateKalmanZ = states["kalman_z"];
+		//stateKalmanZ[4] = -Mc*g - Mc * stateKalmanZ[2] + stateKalmanZ[3];
+		fout19 << stateKalmanZ.transpose() << std::endl;
 
-	std::pair<Eigen::Vector3d, Eigen::Vector2d> fromExtForces = this->getZmpFromExternalForces();
-	Eigen::Vector2d measGrf = fromExtForces.second;
+		std::pair<Eigen::Vector3d, Eigen::Vector2d> fromExtForces = this->getZmpFromExternalForces();
+		Eigen::Vector2d measGrf = fromExtForces.second;
 
-	std::ofstream fout20("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z_gt.txt", std::ofstream::app);
-	fout20 << mTorso->getCOM()[2] << " " // - mSupportFoot->getCOM()[2] << " "
-		<< mTorso->getCOMLinearVelocity()[2] << " " 
-		<< mTorso->getCOMLinearAcceleration()[2] << " "
-		<< force[2] <<  " "
-		<< forceDerivative[2] << std::endl;
-	
-	std::ofstream fout200("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z_un.txt", std::ofstream::app);
-	fout200 << uncertainty["kalman_z"] << std::endl;
+		std::ofstream fout20("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z_gt.txt", std::ofstream::app);
+		fout20 << mTorso->getCOM()[2] << " " // - mSupportFoot->getCOM()[2] << " "
+			<< mTorso->getCOMLinearVelocity()[2] << " " 
+			<< mTorso->getCOMLinearAcceleration()[2] << " "
+			<< force[2] <<  " "
+			<< forceDerivative[2] << std::endl;
+		
+		std::ofstream fout200("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z_un.txt", std::ofstream::app);
+		fout200 << uncertainty["kalman_z"] << std::endl;
+	}
 
-	//---------------------- stephens x ----------------------
+	if (observers->getChild("stephens") != 0){ 
+		//---------------------- stephens x ----------------------
+		std::ofstream fout21("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x.txt", std::ofstream::app);
+		Eigen::VectorXd state = states["stephens_x"];
+		state[3] *= Mc;
+		fout21 << state.transpose() << std::endl;
 
-	std::ofstream fout21("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x.txt", std::ofstream::app);
-	state = states["stephens_x"];
-	state[3] *= Mc;
-	fout21 << state.transpose() << std::endl;
+		std::ofstream fout22("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x_gt.txt", std::ofstream::app);
+		fout22 << mTorso->getCOM()[0] <<  " " //- mSupportFoot->getCOM()[0] << " "
+			<< mTorso->getCOMLinearVelocity(/*mSupportFoot*/)[0] << " " 
+			<< ZMPFilteredX <<  " " //- mSupportFoot->getCOM()[0] <<  " "
+			<< force[0] << std::endl;
 
-	std::ofstream fout22("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x_gt.txt", std::ofstream::app);
-	fout22 << mTorso->getCOM()[0] <<  " " //- mSupportFoot->getCOM()[0] << " "
-	       << mTorso->getCOMLinearVelocity(/*mSupportFoot*/)[0] << " " 
-		   << ZMPFilteredX <<  " " //- mSupportFoot->getCOM()[0] <<  " "
-		   << force[0] << std::endl;
+		std::ofstream fout222("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x_un.txt", std::ofstream::app);
+		fout222 << uncertainty["stephens_x"] << std::endl;
 
-	std::ofstream fout222("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x_un.txt", std::ofstream::app);
-	fout222 << uncertainty["stephens_x"] << std::endl;
+		//---------------------- stephens y ----------------------
 
-	//---------------------- stephens y ----------------------
+		std::ofstream fout23("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_y.txt", std::ofstream::app);
+		state = states["stephens_y"];
+		state[3] *= Mc;
+		fout23 << state.transpose() << std::endl;
+		
+		std::ofstream fout24("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_y_gt.txt", std::ofstream::app);
+		fout24 << mTorso->getCOM()[1]  <<  " " //- mSupportFoot->getCOM()[1] << " "
+			<< mTorso->getCOMLinearVelocity(/*mSupportFoot*/)[1] << " " 
+			<< ZMPFilteredY <<  " " //- mSupportFoot->getCOM()[1]<<  " "
+			<< force[1] << std::endl;
 
-	std::ofstream fout23("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_y.txt", std::ofstream::app);
-	state = states["stephens_y"];
-	state[3] *= Mc;
-	fout23 << state.transpose() << std::endl;
-	
-	std::ofstream fout24("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_y_gt.txt", std::ofstream::app);
-	fout24 << mTorso->getCOM()[1]  <<  " " //- mSupportFoot->getCOM()[1] << " "
-	       << mTorso->getCOMLinearVelocity(/*mSupportFoot*/)[1] << " " 
-		   << ZMPFilteredY <<  " " //- mSupportFoot->getCOM()[1]<<  " "
-		   << force[1] << std::endl;
-
-	std::ofstream fout244("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_y_un.txt", std::ofstream::app);
-	fout244 << uncertainty["stephens_y"] << std::endl;
-
-	// std::ofstream fout25("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_z.txt", std::ofstream::app);
-	// fout25 << states["stephens_z"].transpose() << std::endl;
-
-	// std::ofstream fout26("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_z_gt.txt", std::ofstream::app);
-	// fout26 << mTorso->getCOM()[2] <<  " " //- mSupportFoot->getCOM()[2] << " "
-	//        << mTorso->getCOMLinearVelocity()[2] << " " 
-	// 	   << measZmp[2]  <<  " " //- mSupportFoot->getCOM()[2] <<  " "
-	// 	   << externalForce[2] << std::endl;
+		std::ofstream fout244("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_y_un.txt", std::ofstream::app);
+		fout244 << uncertainty["stephens_y"] << std::endl;
+	}
 }
 
 Eigen::VectorXd Controller::generateWalking(){
@@ -1301,4 +1088,228 @@ Eigen::VectorXd Controller::shift(Eigen::VectorXd v){
         newV(i-1) = v(i);
     }
     return newV;
+}
+
+void Controller::addLuenbergerObserver(){
+	// TODO: correct initial position;
+	if (observers->getChild("luenberger") != 0){
+		return;
+	}
+	
+	int n = 5;
+    int m = 2;
+
+    Eigen::MatrixXd A(n, n);
+    Eigen::MatrixXd B(n, 1);
+    Eigen::MatrixXd C(m, n);
+    Eigen::MatrixXd G(n, m);
+
+	A << 0, 1, 0, 0, 0,
+	        pow(ni,2), 0, -pow(ni,2), 1, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 1,
+			0, 0, 0, 0, 0;
+
+	B << 0, 0, 1, 0, 0;
+
+	C << 1, 0, 0, 0, 0,
+	        0, 0, 1, 0, 0;
+
+	G << 240.00,          0.00,
+      21254.70,        -29.49,
+          0.00,         70.00,
+     820250.00,         12.36,
+   11700000.00,        236.15;
+
+
+    LuenbergerObserver *xLuenObs = new LuenbergerObserver(dt, A, B, C, G, "luenberger_x", 0);
+    LuenbergerObserver *yLuenObs = new LuenbergerObserver(dt, A, B, C, G, "luenberger_y", 1);
+	LuenbergerObserver *zLuenObs = new LuenbergerObserver(dt, A, B, C, G, "luenberger_z", 2);
+
+	CompositeObserver *luenObs = new CompositeObserver("luenberger");
+
+    luenObs->add(xLuenObs);
+    luenObs->add(yLuenObs);
+	luenObs->add(zLuenObs);
+
+    Eigen::VectorXd initX (n);
+	Eigen::VectorXd initY (n);
+	Eigen::VectorXd initZ (n);
+
+	// Eigen::VectorXd initZ (n);
+    initX << comInitialPosition[0], 0., comInitialPosition[0], 0., 0.;
+    initY << comInitialPosition[1], 0., comInitialPosition[1], 0., 0.;
+	initZ << comInitialPosition[2], 0., 0., 0., 0.;
+	
+	xLuenObs -> init(initX);
+ 	yLuenObs -> init(initY);
+	zLuenObs -> init(initZ);
+
+	observers -> add(luenObs);
+}
+
+void Controller::addKalmanObserver(){
+	if (observers->getChild("kalman") != 0){
+		return;
+	}
+	int u = 2;          // size input vector
+	int n = 5;          // size vector states
+	int m = 3;          // size vector measurements
+
+	double sigmaQJerk = pow(10.0, 3.0);
+	double sigmaQDdfext = pow(10.0, 3.0);
+
+	double zcHat, ddzcHat, fzHat, grfHat;
+	double fxHat, fyHat, ts;
+
+	// Initialize matrices for observers
+
+	Eigen::MatrixXd Rz(m, m);
+	Eigen::MatrixXd Rx(m, m);
+	Eigen::MatrixXd Ry(m, m);
+
+	Eigen::MatrixXd A(n, n);
+	Eigen::MatrixXd B(n, u);
+	Eigen::MatrixXd Cz(m, n);
+
+	// Define matrices for observers
+
+	Rz << 0.01, 0, 0, 
+	          0, 1, 0,
+			  0, 0, 1;
+	Rx << 0.01, 0, 0,
+	          0, 1, 0,
+			  0, 0, 0.01;
+	Ry = Rx;
+
+	A << 1, dt, pow(dt, 2.0)/2, 0, 0,
+         0, 1, dt, 0, 0, 
+         0, 0, 1, 0, 0, 
+         0, 0, 0, 1, dt, 
+         0, 0, 0, 0, 1;
+            
+    B << pow(dt, 3.0)/6, 0,
+		 pow(dt, 2.0)/2, 0,
+		 dt, 0, 
+		 0, pow(dt, 2.0)/2,
+		 0, dt;
+
+    Cz << 1, 0, 0, 0, 0, 
+          0, 0, 1, 0, 0, 
+          0, 0, -Mc, 1, 0;
+
+	KalmanFilter* zKalObs = new KalmanFilter(dt, A, B, Cz, Rz, sigmaQJerk,
+	                      sigmaQDdfext, "kalman_z", 2);  // z-axis Observer
+	zKalObs->init();
+
+	KalmanFilter* xKalObs = new KalmanFilter(dt, A, B, Cz, Rx, sigmaQJerk,
+	                     sigmaQDdfext, "kalman_x", 0);  // x-axis Observer
+	xKalObs->init();
+
+	KalmanFilter* yKalObs = new KalmanFilter(dt, A, B, Cz, Ry, sigmaQJerk,
+	                     sigmaQDdfext, "kalman_y", 1);  // z-axis Observer
+	yKalObs->init();
+	KalmanComposite* kalObs = new KalmanComposite(g, Mc);
+	kalObs->addKalmanX(xKalObs);
+	kalObs->addKalmanY(yKalObs);
+	kalObs->addKalmanZ(zKalObs);
+
+	observers->add(kalObs);
+}
+
+void Controller::addStephensObserver(){
+	if (observers->getChild("stephens") != 0){
+		return;
+	}
+
+	int n = 4;          // size vector states
+    int m = 2;          // size vector measurements
+    int u = 1;          // size input vector
+
+    double posProNoise = exp(-8), velProNoise = exp(-4);
+	double forceProNoise = exp(-1);
+	double posOutputNoise = exp(-5), zmpOutputNoise = exp(-5);
+
+    // Initialize matrices for observers
+    Eigen::MatrixXd Q(n, n);
+    Eigen::MatrixXd R(m, m);
+
+    Eigen::MatrixXd A(n, n);
+    Eigen::MatrixXd B(n, u);
+    Eigen::MatrixXd C(m, n);
+
+    // Define matrices for observers
+    Q <<  posProNoise, 0, 0, 0,
+		  0, velProNoise, 0, 0,
+          0, 0, velProNoise, 0,
+          0, 0, 0, forceProNoise;
+
+    R << posOutputNoise, 0,
+		 0, zmpOutputNoise;
+
+    A << 1,           dt,             0, 0, 
+         pow(ni,2)*dt, 1, -pow(ni,2)*dt, dt,
+		 0,            0,             1, 0, 
+         0,            0,             0, 1;
+
+        
+    B << 0, 0, dt, 0;
+
+    C << 1, 0, 0, 0, 
+		 0, 0, 1, 0;
+
+
+	int f = pow(10, 2);
+	Eigen::MatrixXd P(n, n);
+    P = f*P.setIdentity();
+	Eigen::VectorXd initX(n);
+	Eigen::VectorXd initY(n);
+	Eigen::VectorXd initZ(n);
+
+    initX << comInitialPosition[0], 0., comInitialPosition[0], 0.;
+    initY << comInitialPosition[1], 0., comInitialPosition[1], 0.;
+	initZ << comInitialPosition[2], 0., 0., 0.;
+
+	// ---------- rest 
+	CompositeObserver *stephensObs = new CompositeObserver("stephens");
+
+
+    // Initialization Observers and vector of measurements
+    StephensFilter *xStObs = new StephensFilter(dt, A, B, C, Q, R, "stephens_x", 0); 
+    xStObs->init(initX, P);
+	StephensFilter *yStObs = new StephensFilter(dt, A, B, C, Q, R, "stephens_y", 1);  
+    yStObs->init(initY, P);
+  	StephensFilter *zStObs = new StephensFilter(dt, A, B, C, Q, R, "stephens_z", 2);  
+    zStObs->init(initZ, P);
+
+	stephensObs->add(xStObs);
+	stephensObs->add(yStObs);
+	stephensObs->add(zStObs);
+
+	observers->add(stephensObs);
+}
+
+void Controller::removeLuenbergerObserver(){
+	Observer* luen = observers->getChild("luenberger");
+	if (luen != 0) {
+		observers->rem(luen);
+	}
+}
+
+void Controller::removeKalmanObserver(){
+	Observer* kalman = observers->getChild("kalman");
+	if (kalman != 0) {
+		observers->rem(kalman);
+	}
+}
+
+void Controller::removeStephensObserver(){
+	Observer* stephens = observers->getChild("stephens");
+	if (stephens != 0) {
+		observers->rem(stephens);
+	}
+}
+
+void Controller::setObserverDelay(int delay){
+	obsDelay = delay;
 }

@@ -16,7 +16,10 @@ CompositeObserver::~CompositeObserver () {
     }
 }
 
-void CompositeObserver::rem(Observer *obs) { children.remove(obs); }
+void CompositeObserver::rem(Observer *obs) {
+    children.remove(obs);
+    delete obs;
+}
 
 void CompositeObserver::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y) { 
     for (Observer *c : children) {
@@ -42,17 +45,48 @@ std::map<std::string, Eigen::MatrixXd> CompositeObserver::uncertainty() {
     return m;
 }
 
+Observer* CompositeObserver::getChild(std::string name){
+    for (Observer* obs : children) {
+        if (obs->getName() == name){
+            return obs;
+        }
+    }
+    return 0;
+}
+
+/* --------- Leaf ----------- */
+
+LeafObserver::LeafObserver(std::string name, int axis, double dt, int n, int m):
+Observer(name), axis(axis), dt(dt), n(n), m(m) {
+        xAct.resize(n);
+}
+
+void LeafObserver::init() { initialized = true; }
+
+int LeafObserver::getM() { return m; }
+
+int LeafObserver::getN() { return n; }
+
+double LeafObserver::getDt() { return dt; }
+
+
+std::map<std::string, Eigen::VectorXd> LeafObserver::state(){
+    std::map<std::string, Eigen::VectorXd> map;
+    map[name] = xAct;
+    return map;
+}
+
+
 /* ---------- Luenberger --------------- */
 
 LuenbergerObserver::LuenbergerObserver(
+            double dt,
             const Eigen::MatrixXd& A,
             const Eigen::MatrixXd& B,
             const Eigen::MatrixXd& C,
             const Eigen::MatrixXd& G, std::string name, int axis):
-            LeafObserver(name, axis),
-             A(A), C(C), B(B), G(G), 
-           m(C.rows()), n(A.rows())
-           {
+            LeafObserver(name, axis, dt, A.rows(), C.rows()),
+             A(A), C(C), B(B), G(G){
                xAct.resize(n);
            }
 
@@ -79,14 +113,7 @@ void LuenbergerObserver::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd&
     }
     
     Eigen::VectorXd xD = (A * xAct) + (B * u) + (G*(y - C*xAct));
-    xAct = xD * 1.00/100.00 + xAct;
-    // xAct = (A * xAct) + (B * u) + (G*(y - C*xAct));
-}
-
-std::map<std::string, Eigen::VectorXd> LuenbergerObserver::state(){
-    std::map<std::string, Eigen::VectorXd> map;
-    map[name] = xAct;
-    return map;
+    xAct = xD * dt + xAct;
 }
 
 std::map<std::string, Eigen::MatrixXd> LuenbergerObserver::uncertainty() {
@@ -102,13 +129,6 @@ std::map<std::string, Eigen::MatrixXd> LuenbergerObserver::uncertainty() {
 /* ------------------ Kalman Composite ---------------- */
 
 
-KalmanComposite::~KalmanComposite(){
-    delete kalmanX;
-    delete kalmanY;
-    delete kalmanZ;
-}
-
-
 void KalmanComposite::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y) {
     kalmanZ->update(U, Y);
 
@@ -118,7 +138,7 @@ void KalmanComposite::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y)
     double grfHat = -Mc*g - Mc*ddzcHat + fzHat;
     //double grfHat = Y.row(2)[1];
 
-    Eigen::MatrixXd Cx(kalmanZ->getm(), kalmanZ->getn());
+    Eigen::MatrixXd Cx(kalmanZ->getM(), kalmanZ->getN());
     Cx << 1, 0, 0, 0, 0,
           0, 0, 1, 0, 0,
           1, 0, Mc*zcHat/grfHat, -zcHat/grfHat, 0;
@@ -126,44 +146,33 @@ void KalmanComposite::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y)
     kalmanX->update(Cx, U, Y);
     kalmanY->update(Cx, U, Y);
 }
-
-std::map<std::string, Eigen::VectorXd> KalmanComposite::state() {
-    std::map<std::string, Eigen::VectorXd> mp;
-    auto mapX = kalmanX->state();
-    mp.insert(mapX.begin(), mapX.end());
-    auto mapY = kalmanY->state();
-    mp.insert(mapY.begin(), mapY.end());
-    auto mapZ = kalmanZ->state();
-    mp.insert(mapZ.begin(), mapZ.end());
-    return mp;
-}
-
-std::map<std::string, Eigen::MatrixXd> KalmanComposite::uncertainty() {
-    std::map<std::string, Eigen::MatrixXd> m;
-    auto mapX = kalmanX->uncertainty();
-    m.insert(mapX.begin(), mapX.end());
-    auto mapY = kalmanY->uncertainty();
-    m.insert(mapY.begin(), mapY.end());
-    auto mapZ = kalmanZ->uncertainty();
-    m.insert(mapZ.begin(), mapZ.end());
-    return m;
-}
          
-void KalmanComposite::addKalmanX(KalmanFilter *obs) {kalmanX = obs;}
-void KalmanComposite::addKalmanY(KalmanFilter *obs) {kalmanY = obs;}
-void KalmanComposite::addKalmanZ(KalmanFilter *obs) {kalmanZ = obs;}
+void KalmanComposite::addKalmanX(KalmanFilter *obs) {
+    kalmanX = obs;
+    CompositeObserver::add(kalmanX);
+}
 
+void KalmanComposite::addKalmanY(KalmanFilter *obs) {
+    kalmanY = obs;
+    CompositeObserver::add(kalmanY);
+}
+void KalmanComposite::addKalmanZ(KalmanFilter *obs) {
+    kalmanZ = obs;
+    CompositeObserver::add(kalmanZ);
+}
 
 /* ------------------ Kalman ------------------ */
 
 // Constructor implementation
-KalmanFilter::KalmanFilter(const Eigen::MatrixXd& A,
+KalmanFilter::KalmanFilter(double dt,
+                            const Eigen::MatrixXd& A,
                             const Eigen::MatrixXd& B,
                             const Eigen::MatrixXd& C,
                             const Eigen::MatrixXd& R,
                             double sigma_jerk,
                             double sigma_ddfext, 
-                            std::string name, int axis):LeafObserver(name, axis){
+                            std::string name, int axis):LeafObserver(name, axis, dt, A.rows(),
+                            C.rows()){
 
     Eigen::Matrix2d cov_input;
     cov_input << sigma_jerk, 0, 0, sigma_ddfext;
@@ -171,8 +180,6 @@ KalmanFilter::KalmanFilter(const Eigen::MatrixXd& A,
     this->A = A;
     this->C = C;
     this->R = R;
-    m = C.rows();
-    n = A.rows();
     xAct.resize(n);
 }
 
@@ -214,13 +221,6 @@ void KalmanFilter::update(const Eigen::MatrixXd& C, const Eigen::MatrixXd& U, co
     update(U, Y);
 }
 
-// Returns current state estimate
-std::map<std::string, Eigen::VectorXd> KalmanFilter::state(){
-    std::map<std::string, Eigen::VectorXd> map;
-    map[name] = xAct;
-    return map;
-}
-
 // Returns current covariance estimate
 std::map<std::string, Eigen::MatrixXd> KalmanFilter::uncertainty(){
     std::map<std::string, Eigen::MatrixXd> map;
@@ -231,19 +231,18 @@ std::map<std::string, Eigen::MatrixXd> KalmanFilter::uncertainty(){
 // -------------------- Stephens -----------------------
 
 // Constructor implementation
-StephensFilter::StephensFilter(const Eigen::MatrixXd& A,
+StephensFilter::StephensFilter(double dt,
+                               const Eigen::MatrixXd& A,
                                const Eigen::MatrixXd& B,
                                const Eigen::MatrixXd& C, 
                                const Eigen::MatrixXd& Q,
-                               const Eigen::MatrixXd& R, std::string name, int axis) : LeafObserver(name, axis) {
+                               const Eigen::MatrixXd& R, std::string name, int axis) : LeafObserver(name, axis, dt, A.rows(),
+                               C.rows()) {
     this->A = A;
     this->B = B;
     this->C = C;
     this->Q = Q;
     this->R = R;
-    m = C.rows();
-    n = A.rows();
-    xAct.resize(n);
 }
 
 
@@ -267,9 +266,9 @@ void StephensFilter::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y){
     u = U.row(axis);
     Eigen::Vector2d y;
     if (axis == 2) {
-        y << Y.row(axis)[0], 0.0;//, 0.0;
+        y << Y.row(axis)[0], 0.0;
     } else {
-        y << Y.row(axis)[0], Y.row(axis)[1];//Y.row(axis)[2], Y.row(axis)[1];
+        y << Y.row(axis)[0], Y.row(axis)[1];
     }
     // Prediction step
 
@@ -283,13 +282,6 @@ void StephensFilter::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y){
     P = P - G*C*P;
 }
 
-
-// Returns current state estimate
-std::map<std::string, Eigen::VectorXd> StephensFilter::state(){
-    std::map<std::string, Eigen::VectorXd> map;
-    map[name] = xAct;
-    return map;
-}
 
 std::map<std::string, Eigen::MatrixXd> StephensFilter::uncertainty(){
     std::map<std::string, Eigen::MatrixXd> map;

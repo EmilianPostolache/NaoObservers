@@ -24,8 +24,9 @@ class CompositeObserver : public Observer {
 
         void add(Observer *obs);
         void rem(Observer *obs);
+        Observer* getChild(std::string name);
 
-        void update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y);
+        virtual void update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y);
 
         std::map<std::string, Eigen::MatrixXd> uncertainty();
         std::map<std::string, Eigen::VectorXd> state();
@@ -36,14 +37,20 @@ class CompositeObserver : public Observer {
 
 class LeafObserver : public Observer {
     public:
-        LeafObserver(std::string name, int axis) :
-                     Observer(name) {this->axis = axis;};
-        virtual void init() { initialized = true; }
+        LeafObserver(std::string, int, double, int, int);
+        virtual void init();
+        int getM();
+        int getN();
+        double getDt();
+        std::map<std::string, Eigen::VectorXd> state();
 
     protected:
-        // Estimated states 
+        // System dimensions
+        int m, n; 
         int axis;
+        double dt;
         bool initialized;
+        // Estimated states 
         Eigen::VectorXd xAct;
 };
 
@@ -51,6 +58,7 @@ class LeafObserver : public Observer {
 class LuenbergerObserver : public LeafObserver{
     public:
         LuenbergerObserver(
+            double dt,
             const Eigen::MatrixXd& A,
             const Eigen::MatrixXd& B,
             const Eigen::MatrixXd& C,
@@ -59,13 +67,12 @@ class LuenbergerObserver : public LeafObserver{
         void init();
         void init(const Eigen::VectorXd& x0);
         void update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y);
-        std::map<std::string, Eigen::VectorXd> state();
+        // std::map<std::string, Eigen::VectorXd> state();
         std::map<std::string, Eigen::MatrixXd> uncertainty();
 
      private:
          // Matrices
          Eigen::MatrixXd A,B,C,G;
-         int m, n;
 };
 
 class KalmanFilter : public LeafObserver {
@@ -75,21 +82,18 @@ class KalmanFilter : public LeafObserver {
         Class constructor
 
         @param dt: timestep
-        @param A: system dynamics matrix
-        @param B: input matrix
-        @param C: output matrix
         @param R: process noise covariance
         @param P: estimate error covariance
-        @param sigma_jerk: covariance of CoM jerk
-        @param sigma_ddfext: covariance of second derivative of external force
+        @param sigmaJerk: covariance of CoM jerk
+        @param sigmaDdfext: covariance of second derivative of external force
         */
-
-        KalmanFilter(const Eigen::MatrixXd& A,
+        KalmanFilter(double dt,
+                    const Eigen::MatrixXd& A,
                     const Eigen::MatrixXd& B,
                     const Eigen::MatrixXd& C,
                     const Eigen::MatrixXd& R,
-                    double sigma_jerk,
-                    double sigma_ddfext, std::string name, int axis);
+                    double sigmaJerk,
+                    double sigmaDdfext, std::string name, int axis);
 
 
         /*
@@ -129,28 +133,23 @@ class KalmanFilter : public LeafObserver {
         /*
         Returns the current estimate of the system state
         */
-        std::map<std::string, Eigen::VectorXd> state();
+        //std::map<std::string, Eigen::VectorXd> state();
         std::map<std::string, Eigen::MatrixXd> uncertainty();
-
-        int getm(){ return m; }
-        int getn(){ return n; }
         
     private:
-        int m, n; // System dimensions
         Eigen::MatrixXd A, C, Q, R, P, K, NI; //Kalman Filter matrices
 };
 
-class KalmanComposite : public Observer {
+class KalmanComposite : public CompositeObserver {
     public:
-        KalmanComposite(double g, double Mc): Observer("kalman_composite") {
+        KalmanComposite(double g, double Mc): CompositeObserver("kalman") {
             this->g = g;
             this->Mc = Mc;
         };
-        ~KalmanComposite();
 
         void update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y);
-        std::map<std::string, Eigen::MatrixXd> uncertainty();
-        std::map<std::string, Eigen::VectorXd> state();
+        // std::map<std::string, Eigen::MatrixXd> uncertainty();
+        // std::map<std::string, Eigen::VectorXd> state();
 
         void addKalmanX(KalmanFilter *obs);
         void addKalmanY(KalmanFilter *obs);
@@ -182,6 +181,7 @@ public:
     @param P: estimate error covariance
     */
     StephensFilter(
+            double dt,
             const Eigen::MatrixXd& A,
             const Eigen::MatrixXd& B,
             const Eigen::MatrixXd& C,
@@ -213,25 +213,17 @@ public:
     void update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y);
 
     
-    /*
-    Returns the current estimate of the system state
-    */
-    std::map<std::string, Eigen::VectorXd> state();
+    // /*
+    // Returns the current estimate of the system state
+    // */
+    // std::map<std::string, Eigen::VectorXd> state();
 
     /*
     Returns the current covariance
     */
     std::map<std::string, Eigen::MatrixXd> uncertainty();
 
-
-    /*
-    Returns the current timestep
-    */
-    double getTimestep();
-
-
     private:
-        int m, n; // System dimensions
         Eigen::MatrixXd A, B, C, Q, R, P, G, NI; //Kalman Filter matrices
 };
 
