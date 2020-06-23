@@ -281,13 +281,14 @@ void Controller::storeData() {
 	// ---------------------- luenberger -----------------
 	if (observers->getChild("luenberger") != 0){ 
 		//---------------------- luenberger x ----------------------
-		std::ofstream fout9("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_x.txt", std::ofstream::app);
+		
+		std::ofstream fout9(logPath + std::string("luenberger_x.txt"), std::ofstream::app);
 		Eigen::VectorXd state = states["luenberger_x"];
 		state[3] *= Mc;
 		state[3] -= externalForceXOffset;
 		fout9 << state.transpose() << std::endl;
 
-		std::ofstream fout10("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_x_gt.txt", std::ofstream::app);
+		std::ofstream fout10(logPath + std::string("luenberger_x_gt.txt"), std::ofstream::app);
 		fout10 << mTorso->getCOM()[0] << " " //- mSupportFoot->getCOM()[0] << " "
 			<< mTorso->getCOMLinearVelocity()[0] << " " 
 			<< ZMPFilteredX <<  " "
@@ -296,12 +297,12 @@ void Controller::storeData() {
 
 		//---------------------- luenberger y ----------------------
 
-		std::ofstream fout11("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_y.txt", std::ofstream::app);
+		std::ofstream fout11(logPath + std::string("luenberger_y.txt"), std::ofstream::app);
 		state = states["luenberger_y"];
 		state[3] *= Mc;
 		fout11 << state.transpose() << std::endl;
 
-		std::ofstream fout12("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_y_gt.txt", std::ofstream::app);
+		std::ofstream fout12(logPath + std::string("luenberger_y_gt.txt"), std::ofstream::app);
 		fout12 << mTorso->getCOM()[1] << " " // - mSupportFoot->getCOM()[1] 
 			<< mTorso->getCOMLinearVelocity()[1] << " " 
 			<< ZMPFilteredY <<  " "
@@ -309,54 +310,43 @@ void Controller::storeData() {
 			<< forceDerivative[1] <<std::endl;
 	}
 
-	// std::ofstream fout13("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_z.txt", std::ofstream::app);
-	// fout13 << states["luenberger_z"].transpose() << std::endl;
-
-	// std::ofstream fout14("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/luenberger_z_gt.txt", std::ofstream::app);
-	// fout14 << mTorso->getCOM()[2] << " " // - mSupportFoot->getCOM()[2] << " "
-	//        << mTorso->getCOMLinearVelocity()[2] << " " 
-	// 	   << measZmp[2] <<  " "
-	// 	   << force[2] <<  " "
-	// 	   << 0.0 <<std::endl;
-
-
 	// ---------------------- kalman -----------------
 	if (observers->getChild("kalman") != 0){ 
 		//---------------------- kalman x ----------------------
-		std::ofstream fout15("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x.txt", std::ofstream::app);
+		std::ofstream fout15(logPath + std::string("kalman_x.txt"), std::ofstream::app);
 		Eigen::VectorXd state = states["kalman_x"];
 		state[3] -= externalForceXOffset;
 		fout15 << state.transpose() << std::endl;
 
-		std::ofstream fout16("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x_gt.txt", std::ofstream::app);
+		std::ofstream fout16(logPath + std::string("kalman_x_gt.txt"), std::ofstream::app);
 		fout16 << mTorso->getCOM()[0] << " " //- mSupportFoot->getCOM()[0] << " "
 			<< mTorso->getCOMLinearVelocity()[0] << " " 
 			<< mTorso->getCOMLinearAcceleration()[0] << " "
 			<< force[0] <<  " "
 			<< forceDerivative[0] << std::endl;
 
-		std::ofstream fout166("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_x_un.txt", std::ofstream::app);
+		std::ofstream fout166(logPath + std::string("kalman_x_un.txt"), std::ofstream::app);
 		fout166 << uncertainty["kalman_x"] << std::endl;
 
 
 		//---------------------- kalman y ----------------------
 
-		std::ofstream fout17("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y.txt", std::ofstream::app);
+		std::ofstream fout17(logPath + std::string("kalman_y.txt"), std::ofstream::app);
 		fout17 << states["kalman_y"].transpose() << std::endl;
 		
-		std::ofstream fout18("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y_gt.txt", std::ofstream::app);
+		std::ofstream fout18(logPath + std::string("kalman_y_gt.txt"), std::ofstream::app);
 		fout18 << mTorso->getCOM()[1] << " " // - mSupportFoot->getCOM()[1] << " "
 			<< mTorso->getCOMLinearVelocity()[1] << " " 
 			<< mTorso->getCOMLinearAcceleration()[1] << " "
 			<< force[1] <<  " "
 			<< forceDerivative[1] << std::endl;
 
-		std::ofstream fout188("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_y_un.txt", std::ofstream::app);
+		std::ofstream fout188(logPath + std::string("kalman_y_un.txt"), std::ofstream::app);
 		fout188 << uncertainty["kalman_y"] << std::endl;
 
 		//---------------------- kalman z ----------------------
 
-		std::ofstream fout19("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z.txt", std::ofstream::app);
+		std::ofstream fout19(logPath + std::string("kalman_z.txt"), std::ofstream::app);
 
 		Eigen::VectorXd stateKalmanZ = states["kalman_z"];
 		//stateKalmanZ[4] = -Mc*g - Mc * stateKalmanZ[2] + stateKalmanZ[3];
@@ -365,48 +355,48 @@ void Controller::storeData() {
 		std::pair<Eigen::Vector3d, Eigen::Vector2d> fromExtForces = this->getZmpFromExternalForces();
 		Eigen::Vector2d measGrf = fromExtForces.second;
 
-		std::ofstream fout20("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z_gt.txt", std::ofstream::app);
+		std::ofstream fout20(logPath + std::string("kalman_z_gt.txt"), std::ofstream::app);
 		fout20 << mTorso->getCOM()[2] << " " // - mSupportFoot->getCOM()[2] << " "
 			<< mTorso->getCOMLinearVelocity()[2] << " " 
 			<< mTorso->getCOMLinearAcceleration()[2] << " "
 			<< force[2] <<  " "
 			<< forceDerivative[2] << std::endl;
 		
-		std::ofstream fout200("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/kalman_z_un.txt", std::ofstream::app);
+		std::ofstream fout200(logPath + std::string("kalman_z_un.txt"), std::ofstream::app);
 		fout200 << uncertainty["kalman_z"] << std::endl;
 	}
 
 	if (observers->getChild("stephens") != 0){ 
 		//---------------------- stephens x ----------------------
-		std::ofstream fout21("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x.txt", std::ofstream::app);
+		std::ofstream fout21(logPath + std::string("stephens_x.txt"), std::ofstream::app);
 		Eigen::VectorXd state = states["stephens_x"];
 		state[3] *= Mc;
 		state[3] -= externalForceXOffset; // X-OFFSET
 		fout21 << state.transpose() << std::endl;
 
-		std::ofstream fout22("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x_gt.txt", std::ofstream::app);
+		std::ofstream fout22(logPath + std::string("stephens_x_gt.txt"), std::ofstream::app);
 		fout22 << mTorso->getCOM()[0] <<  " " //- mSupportFoot->getCOM()[0] << " "
 			<< mTorso->getCOMLinearVelocity(/*mSupportFoot*/)[0] << " " 
 			<< ZMPFilteredX <<  " " //- mSupportFoot->getCOM()[0] <<  " "
 			<< force[0] << std::endl;
 
-		std::ofstream fout222("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_x_un.txt", std::ofstream::app);
+		std::ofstream fout222(logPath + std::string("stephens_x_un.txt"), std::ofstream::app);
 		fout222 << uncertainty["stephens_x"] << std::endl;
 
 		//---------------------- stephens y ----------------------
 
-		std::ofstream fout23("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_y.txt", std::ofstream::app);
+		std::ofstream fout23(logPath + std::string("stephens_y.txt"), std::ofstream::app);
 		state = states["stephens_y"];
 		state[3] *= Mc;
 		fout23 << state.transpose() << std::endl;
 		
-		std::ofstream fout24("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_y_gt.txt", std::ofstream::app);
+		std::ofstream fout24(logPath + std::string("stephens_y_gt.txt"), std::ofstream::app);
 		fout24 << mTorso->getCOM()[1]  <<  " " //- mSupportFoot->getCOM()[1] << " "
 			<< mTorso->getCOMLinearVelocity(/*mSupportFoot*/)[1] << " " 
 			<< ZMPFilteredY <<  " " //- mSupportFoot->getCOM()[1]<<  " "
 			<< force[1] << std::endl;
 
-		std::ofstream fout244("/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/stephens_y_un.txt", std::ofstream::app);
+		std::ofstream fout244(logPath + std::string("stephens_y_un.txt"), std::ofstream::app);
 		fout244 << uncertainty["stephens_y"] << std::endl;
 	}
 }
