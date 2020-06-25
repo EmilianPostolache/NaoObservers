@@ -8,9 +8,9 @@ and https://github.com/assimp/assimp/releases/tag/v4.1.0/ from source. Then add 
 Project repository for the course of Autonomous and Mobile Robotics, Sapienza University of Rome.
 
 ##  External force observers for the NAO
-### Deployment of a wrapper for external force disturbance observers acting on a NAO robot while walking
+### Analysis and Implementation of a Testbed for External Force Observers acting on the NAO robot.
 
-This repository contains the C++ implementation of a Luenberger, a Kalman-Filter based and a Stephens' observers for estimating an unknown external disturbance acting on the NAO's center of mass. Moreover a C++ wrapper for an easier interface with the observers and a script to plot and save the results of the observers were implemented.
+This repository contains the C++ implementation of a Luenberger, a Kalman-Filter based and a Stephens' observers for estimating an unknown external disturbance acting on the NAO's center of mass. Moreover a C++ wrapper for an easier interface with the observers and a script to plot and save the results were implemented.
 
 
 Contents:
