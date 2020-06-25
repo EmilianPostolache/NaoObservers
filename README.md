@@ -13,7 +13,7 @@ Project repository for the course of Autonomous and Mobile Robotics, Sapienza Un
 This repository contains the C++ implementation of a Luenberger, a Kalman-Filter based and a Stephens' observers for estimating an unknown external disturbance acting on the NAO's center of mass. Moreover a C++ wrapper for an easier interface with the observers and a script to plot and save the results were implemented.
 
 
-Contents:
+## Contents:
 
 - [Structure](#structure)
 - [Execution](#execution)
