@@ -38,6 +38,7 @@ make
 ```
 4. Run `./osgAtlasSimbicon` to start the simulation.
 5. Use in-app widget to customize the experiments.
+6. The results of the experiment are logged to the `intrinsically_stable_mpc/data/` directory
 
 ## Plot Results
 Using `plot.py` it is possible to plot and save the logs produced by `controller.cpp`. To run the script specify the following parameters:
