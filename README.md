@@ -1,9 +1,3 @@
--- For Emilian
-
-Install https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/openscenegraph/3.2.3+dfsg1-3ubuntu2/openscenegraph_3.2.3+dfsg1.orig.tar.gz and
-and https://github.com/assimp/assimp/releases/tag/v4.1.0/ from source. Then add paths to LD_LIBRARY_PATH. Then use the modified version of CMakeLists.txt and afterwards before make, comment the bad imports.
-
-
 # Autonomous and Mobile Robotics 2020
 Project repository for the course of Autonomous and Mobile Robotics, Sapienza University of Rome.
 
