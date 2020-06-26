@@ -180,5 +180,5 @@ private:
   double externalForceXOffset = 26.0;
 
   // Log path
-  std::string logPath = "/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/data/";
+  std::string logPath = "../data/";
 };

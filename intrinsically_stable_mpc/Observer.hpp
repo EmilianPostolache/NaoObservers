@@ -137,7 +137,7 @@ class KalmanFilter : public LeafObserver {
         std::map<std::string, Eigen::MatrixXd> uncertainty();
         
     private:
-        Eigen::MatrixXd A, C, Q, R, P, K, NI; //Kalman Filter matrices
+        Eigen::MatrixXd A, C, Q, R, P;//,  K, NI; //Kalman Filter matrices
 };
 
 class KalmanComposite : public CompositeObserver {
@@ -224,6 +224,6 @@ public:
     std::map<std::string, Eigen::MatrixXd> uncertainty();
 
     private:
-        Eigen::MatrixXd A, B, C, Q, R, P, G, NI; //Kalman Filter matrices
+        Eigen::MatrixXd A, B, C, Q, R, P; // , G, NI; //Kalman Filter matrices
 };
 

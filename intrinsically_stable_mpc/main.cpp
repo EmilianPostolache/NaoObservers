@@ -6,18 +6,30 @@
 #include "NaoWorldNode.hpp"
 #include "NaoEventHandler.hpp"
 #include "NaoWidget.hpp"
+#include <unistd.h>
+#include <limits.h>
 
 int main(int argc, char* argv[])
 {
+      std::string directory;
+      char cwd[PATH_MAX];
+      if (getcwd(cwd, sizeof(cwd)) != NULL) {
+           directory = std::string(cwd);
+      } else {
+            perror("getcwd() error");
+            return 1;
+      }
+     
+
       // Create a world
       dart::simulation::WorldPtr world(new dart::simulation::World);
 
       // Load ground and Nao robot and add them to the world
       dart::utils::DartLoader urdfLoader;
       auto ground = urdfLoader.parseSkeleton(//"dart://sample/sdf/atlas/ground.urdf");
-            "/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/ground.urdf");
+            directory + std::string("/../ground.urdf"));
       auto nao = urdfLoader.parseSkeleton(//dart::utils::SdfParser::readSkeleton(
-            "/home/emilian/Desktop/Mobile Robotics/project/NaoObservers/intrinsically_stable_mpc/nao_flat_feet.urdf");
+            directory + std::string("/../nao_flat_feet.urdf"));
       world->addSkeleton(ground);
       world->addSkeleton(nao);
 

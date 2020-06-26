@@ -82,6 +82,12 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 	// Observers
 	observers = new CompositeObserver("observers");
 
+	// Make data dir
+	std::string makeComm = "mkdir \"";
+	makeComm.append(logPath);
+	makeComm.append("\"");
+	system(makeComm.c_str());
+
 }
 
 Controller::~Controller()
@@ -1215,7 +1221,7 @@ void Controller::addStephensObserver(){
 
     double posProNoise = exp(-8), velProNoise = exp(-4);
 	double forceProNoise = exp(-1);
-	double posOutputNoise = exp(-5), zmpOutputNoise = exp(-5);
+	double posOutputNoise = exp(-8), zmpOutputNoise = exp(-4);
 
     // Initialize matrices for observers
     Eigen::MatrixXd Q(n, n);

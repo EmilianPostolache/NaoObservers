@@ -208,9 +208,8 @@ void KalmanFilter::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y){
     P = A*P*A.transpose() + Q;
 
     // Correction step
-    K = P*C.transpose()*(C*P*C.transpose()+R).inverse();
-
-    NI = y - C*xAct;
+    Eigen::MatrixXd K = P*C.transpose()*(C*P*C.transpose()+R).inverse();
+    Eigen::MatrixXd NI = y - C*xAct;
     xAct = xAct + K*NI;
     P = P - K*C*P;
 }
@@ -276,8 +275,8 @@ void StephensFilter::update(const Eigen::MatrixXd& U, const Eigen::MatrixXd& Y){
     P = A*P*A.transpose() + Q;
 
     // Correction step
-    G = P*C.transpose()*(C*P*C.transpose()+R).inverse();
-    NI = y - C*xAct;
+    Eigen::MatrixXd G = P*C.transpose()*(C*P*C.transpose()+R).inverse();
+    Eigen::MatrixXd NI = y - C*xAct;
     xAct = xAct + G*NI;
     P = P - G*C*P;
 }
