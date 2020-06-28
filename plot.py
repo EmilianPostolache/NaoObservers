@@ -15,10 +15,10 @@ parser.add_argument('--pathESTz', dest='path_estimates_z', type=str, help='Path 
 parser.add_argument('--pathGTx', dest='path_gt_x', type=str, help='Path to ground truth data.txt file along x', required=False)
 parser.add_argument('--pathGTy', dest='path_gt_y', type=str, help='Path to ground truth data.txt file along y', required=False)
 parser.add_argument('--pathGTz', dest='path_gt_z', type=str, help='Path to ground truth data.txt file along z', required=False)
-parser.add_argument('--margin', dest = 'margin', type=float, help='Margin for the ground truth plot', default=0.05)
+parser.add_argument('--margin', dest = 'margin', type=float, help='Margin for the ground truth plot', default=0.0)
 parser.add_argument('--observer', dest='observer', type=str, help='Observer from which the data was produced (e.g. lunemberger, kalman, stephens)', required=True)
 parser.add_argument('--quantity', dest='quantity', type=str, help='Quantity to plot (e.g. com_pos, com_vel, com_acc, zmp_pos, cop_pos, force, dforce)', required=False)
-parser.add_argument('--pathSavings', dest='path_saving', type=str, help='Path to folder where to save plots', default='../')
+parser.add_argument('--pathSavings', dest='path_saving', type=str, help='Path to folder where to save plots', default='./')
 
 args = parser.parse_args()
 
@@ -94,6 +94,17 @@ def plotNorm(t, est, gt):
     return fig
 
 
+# --- Function that scales the force. ---
+# @param data: np array of data read form the .txt file
+# @rerutn data: np array of scaled forces
+
+def scale(data):
+
+    scaleFactor = 5.19/35.1954
+    data[:, 3] = scaleFactor*data[:, 3]
+    return data
+
+
 if __name__ == '__main__':
 
     # Get params
@@ -151,7 +162,9 @@ if __name__ == '__main__':
 
         figs = []
         data_est_x = readData(path_estimates_x, n)
+        data_est_x = scale(data_est_x)
         data_gt_x = readData(path_gt_x, n)
+        data_gt_x = scale(data_gt_x)
         for i in q:
 
             y_label = y_labels[o][i]
@@ -177,7 +190,9 @@ if __name__ == '__main__':
 
         figs = []
         data_est_y = readData(path_estimates_y, n)
+        data_est_y = scale(data_est_y)
         data_gt_y = readData(path_gt_y, n)
+        data_gt_y = scale(data_gt_y)
         for i in q:
 
             y_label = y_labels[o][i]
@@ -203,7 +218,9 @@ if __name__ == '__main__':
 
         figs = []
         data_est_z = readData(path_estimates_z, n)
+        data_est_z = scale(data_est_z)
         data_gt_z = readData(path_gt_z, n)
+        data_gt_z = scale(data_gt_z)
         for i in q:
 
             y_label = y_labels[o][i]
@@ -236,6 +253,9 @@ if __name__ == '__main__':
         tot_est = np.concatenate((values_est_x, values_est_y, values_est_z), axis=1)
         norm_est = LA.norm(tot_est, axis=1)
 
+        values_gt_x = data_gt_x[:,i]
+        values_gt_y = data_gt_y[:,i]
+        values_gt_z = data_gt_z[:,i]
         values_gt_x = values_gt_x[:, np.newaxis]
         values_gt_y = values_gt_y[:, np.newaxis]
         values_gt_z = values_gt_z[:, np.newaxis]
