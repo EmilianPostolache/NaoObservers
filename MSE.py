@@ -34,6 +34,13 @@ def readData(path, n):
     return np.asarray(data).astype(np.float64)
 
 
+def scale(data):
+
+    scaleFactor = 5.19/35.1954
+    data[:, 3] = scaleFactor*data[:, 3]
+    return data
+
+
 def rmse(est, gt):
     e_sq = (np.linalg.norm(gt - est, axis=-1))**2
     return np.sqrt(e_sq.mean())
@@ -55,29 +62,37 @@ if __name__ == '__main__':
     dt = 1/100
 
     force_x_luen = readData(path+'luenberger_x.txt', 5)
+    force_x_luen = scale(force_x_luen)
     force_x_luen = force_x_luen[:, 3]
     force_y_luen = readData(path+'luenberger_y.txt', 5)
+    force_y_luen = scale(force_y_luen)
     force_y_luen = force_y_luen[:, 3]
 
     force_luen = np.stack([force_x_luen, force_y_luen], axis=-1)
 
     force_x_steph = readData(path+'stephens_x.txt', 4)
+    force_x_steph = scale(force_x_steph)
     force_x_steph = force_x_steph[:, 3]
     force_y_steph = readData(path+'stephens_y.txt', 4)
+    force_y_steph = scale(force_y_steph)
     force_y_steph = force_y_steph[:, 3]
 
     force_steph = np.stack([force_x_steph, force_y_steph], axis=-1)
 
     force_x_kalm = readData(path+'kalman_x.txt', 5)
+    force_x_kalm = scale(force_x_kalm)
     force_x_kalm = force_x_kalm[:, 3]
     force_y_kalm = readData(path+'kalman_y.txt', 5)
+    force_y_kalm = scale(force_y_kalm)
     force_y_kalm = force_y_kalm[:, 3]
 
     force_kalm = np.stack([force_x_kalm, force_y_kalm], axis=-1)
 
     gt_x = readData(path+'luenberger_x_gt.txt', 5)
+    gt_x = scale(gt_x)
     gt_x = gt_x[:, 3]
     gt_y = readData(path+'luenberger_y_gt.txt', 5)
+    gt_y = scale(gt_y)
     gt_y = gt_y[:, 3]
 
     force_gt = np.stack([gt_x, gt_y], axis=-1)
