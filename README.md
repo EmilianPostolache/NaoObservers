@@ -2,7 +2,7 @@
 Project repository for the course of Autonomous and Mobile Robotics, Sapienza University of Rome.
 
 ##  External force observers for the NAO
-### Analysis and Implementation of a Testbed for External Force Observers acting on the NAO robot.
+### Analysis and C++ Implementation of a Testbed for External Force Observers acting on the NAO robot.
 
 This repository contains the C++ implementation of a Luenberger, a Kalman-Filter based and a Stephens' observers for estimating an unknown external disturbance acting on the NAO's center of mass. Moreover a C++ wrapper for an easier interface with the observers and a script to plot and save the results were implemented.
 
@@ -16,7 +16,12 @@ This repository contains the C++ implementation of a Luenberger, a Kalman-Filter
 - [Team Members](#team-members)
 
 ## Structure
-- To be completed.
+- **Testbed** folder contains the testbed implementation along with all the necessary files to use it.
+- **Utils** folder contains useful scripts:
+  - **plot.py** allows to plot and save the data in the log files.
+  - **metrics.py** computes the RMSE tot, the MAE tot, the partial RMSE and the TTC.
+- **Logs** folder contains all the generated logs to replicate the results.
+- **report.pdf** is the report for this project.
 
 ## Execution
 1. Install DART following https://dartsim.github.io/install_dart_on_ubuntu.html
@@ -43,15 +48,15 @@ Using `plot.py` it is possible to plot and save the logs produced by `controller
  * `--pathESTz`: (optional) path to the .txt file of the estimates of the observer along the z axis
  * `--pathGTz`: (optional) path to the .txt file of the ground truth values along the z axis
  * `--pathSavings`: path to the observer folder where to save the plots (default `./plots/`)
- * `--margin`: float value for the confidence interval of the ground truth (default `1.0`)
- * `--observer`: name of the observer (default `./plots/`)
+ * `--margin`: float value for the confidence interval of the ground truth (default `0.0`)
+ * `--observer`: name of the observer (default `./`)
  * `--quantity`: (optional) quantity to plot, if `None`, all quantities will be plotted.
  
  
  More info available by calling `--h`. An example is 
 
 ```
-python plot.py --pathESTx ./logs/stephens_x_est.txt --pathGTx ./logs/stephens_x_gt.txt --observer stephens --quantity force
+python plot.py --pathESTx ../Logs/stephens_x_est.txt --pathGTx ../Logs/stephens_x_gt.txt --observer stephens --quantity force
 ```
 
 ## References
