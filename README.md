@@ -25,7 +25,7 @@ This repository contains the C++ implementation of a Luenberger, a Kalman-Filter
 
 ## Execution
 1. Install DART following https://dartsim.github.io/install_dart_on_ubuntu.html
-2. Go to `intrinsically_stable_mpc` and create a build directory:
+2. Go to `Testbed` and create a build directory:
 ```
 mkdir build
 cd build
@@ -37,7 +37,7 @@ make
 ```
 4. Run `./osgAtlasSimbicon` to start the simulation.
 5. Use in-app widget to customize the experiments.
-6. The results of the experiment are logged to the `intrinsically_stable_mpc/data/` directory
+6. The results of the experiment are logged to the `Testbed/data/` directory
 
 ## Plot Results
 Using `plot.py` it is possible to plot and save the logs produced by `controller.cpp`. To run the script specify the following parameters:
